@@ -1,10 +1,20 @@
 
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { usePatient } from '@/context/PatientContext';
+import { useAuth } from '@/context/AuthContext';
+import { Button } from '@/components/ui/button';
+import { LogOut, User } from 'lucide-react';
 
 const Header = () => {
   const { currentPatient } = usePatient();
+  const { user, isAdmin, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/login');
+  };
 
   return (
     <header className="bg-white shadow-sm border-b">
@@ -21,20 +31,42 @@ const Header = () => {
                 Current Patient: {currentPatient.firstName} {currentPatient.lastName}
               </div>
             )}
-            <nav className="flex space-x-4">
-              <Link 
-                to="/" 
-                className="text-gray-600 hover:text-primary px-3 py-2 rounded-md text-sm font-medium"
-              >
-                Home
-              </Link>
-              <Link 
-                to="/patients" 
-                className="text-gray-600 hover:text-primary px-3 py-2 rounded-md text-sm font-medium"
-              >
-                Patients
-              </Link>
-            </nav>
+            
+            {user && (
+              <nav className="flex items-center space-x-4">
+                <Link 
+                  to="/" 
+                  className="text-gray-600 hover:text-primary px-3 py-2 rounded-md text-sm font-medium"
+                >
+                  Home
+                </Link>
+                <Link 
+                  to="/patients" 
+                  className="text-gray-600 hover:text-primary px-3 py-2 rounded-md text-sm font-medium"
+                >
+                  Patients
+                </Link>
+                
+                {isAdmin && (
+                  <Link 
+                    to="/admin" 
+                    className="text-gray-600 hover:text-primary px-3 py-2 rounded-md text-sm font-medium"
+                  >
+                    Admin
+                  </Link>
+                )}
+                
+                <div className="flex items-center space-x-2 ml-2 pl-2 border-l border-gray-200">
+                  <div className="text-sm text-muted-foreground">
+                    <User className="inline h-4 w-4 mr-1" />
+                    {user.email}
+                  </div>
+                  <Button variant="outline" size="sm" onClick={handleSignOut}>
+                    <LogOut className="h-4 w-4" />
+                  </Button>
+                </div>
+              </nav>
+            )}
           </div>
         </div>
       </div>

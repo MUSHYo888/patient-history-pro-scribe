@@ -1,0 +1,126 @@
+
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { useToast } from '@/components/ui/use-toast';
+
+const Login = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const supabase = createClientComponentClient();
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "Login failed",
+          description: error.message,
+        });
+        return;
+      }
+
+      // Check for admin role - you'll need to implement this logic
+      // based on your Supabase setup
+      const { data: userData, error: userError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user?.id)
+        .single();
+
+      if (userError) {
+        toast({
+          variant: "destructive",
+          title: "Error fetching user profile",
+          description: userError.message,
+        });
+        return;
+      }
+
+      // Redirect to admin dashboard or regular dashboard based on role
+      if (userData.role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/');
+      }
+
+      toast({
+        title: "Login successful",
+        description: "Welcome back!",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "An error occurred",
+        description: "Please try again later.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      <div className="max-w-md w-full">
+        <Card>
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl font-bold">Login</CardTitle>
+            <CardDescription>
+              Enter your credentials to access Patient History Pro
+            </CardDescription>
+          </CardHeader>
+          
+          <form onSubmit={handleLogin}>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="name@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+            </CardContent>
+            
+            <CardFooter>
+              <Button className="w-full" type="submit" disabled={loading}>
+                {loading ? "Logging in..." : "Login"}
+              </Button>
+            </CardFooter>
+          </form>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+export default Login;
