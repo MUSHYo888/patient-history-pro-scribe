@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import {
@@ -16,6 +15,10 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
+// Default values to prevent errors when environment variables are not set
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key';
+
 interface UserManagementModalProps {
   mode: 'create' | 'edit';
   user?: any;
@@ -30,10 +33,7 @@ const UserManagementModal = ({ mode, user, onSuccess }: UserManagementModalProps
   const [role, setRole] = useState(user?.role || 'user');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const supabase = createClient(
-    import.meta.env.VITE_SUPABASE_URL || '',
-    import.meta.env.VITE_SUPABASE_ANON_KEY || ''
-  );
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

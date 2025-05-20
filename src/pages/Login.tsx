@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
@@ -8,16 +7,29 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 
+// Default values to prevent errors when environment variables are not set
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key';
+
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const supabase = createClient(
-    import.meta.env.VITE_SUPABASE_URL || '',
-    import.meta.env.VITE_SUPABASE_ANON_KEY || ''
-  );
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // Show warning if environment variables are not set
+  React.useEffect(() => {
+    if (import.meta.env.VITE_SUPABASE_URL === undefined || 
+        import.meta.env.VITE_SUPABASE_ANON_KEY === undefined) {
+      toast({
+        variant: "destructive",
+        title: "Supabase configuration missing",
+        description: "Please set the VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.",
+      });
+    }
+  }, [toast]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

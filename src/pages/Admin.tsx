@@ -9,17 +9,29 @@ import { useNavigate } from 'react-router-dom';
 import AdminDashboardCards from '@/components/AdminDashboardCards';
 import AdminTabs from '@/components/AdminTabs';
 
+// Default values to prevent errors when environment variables are not set
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key';
+
 const Admin = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const supabase = createClient(
-    import.meta.env.VITE_SUPABASE_URL || '',
-    import.meta.env.VITE_SUPABASE_ANON_KEY || ''
-  );
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   useEffect(() => {
+    // Check if Supabase environment variables are set
+    if (import.meta.env.VITE_SUPABASE_URL === undefined || 
+        import.meta.env.VITE_SUPABASE_ANON_KEY === undefined) {
+      toast({
+        variant: "destructive",
+        title: "Supabase configuration missing",
+        description: "Please set the VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.",
+      });
+      return;
+    }
+    
     checkAdminAuth();
     fetchUsers();
   }, []);

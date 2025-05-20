@@ -3,6 +3,11 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { createClient } from '@supabase/supabase-js';
 import { Session, User } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/components/ui/use-toast';
+
+// Default values to prevent errors when environment variables are not set
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key';
 
 interface AuthContextType {
   user: User | null;
@@ -22,11 +27,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
-  const supabase = createClient(
-    import.meta.env.VITE_SUPABASE_URL || '',
-    import.meta.env.VITE_SUPABASE_ANON_KEY || ''
-  );
+  const { toast } = useToast();
   const navigate = useNavigate();
+  
+  // Create Supabase client with fallback values
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // Show warning if environment variables are not set
+  useEffect(() => {
+    if (import.meta.env.VITE_SUPABASE_URL === undefined || 
+        import.meta.env.VITE_SUPABASE_ANON_KEY === undefined) {
+      toast({
+        variant: "destructive",
+        title: "Supabase configuration missing",
+        description: "Please set the VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.",
+      });
+    }
+  }, [toast]);
 
   useEffect(() => {
     const getSession = async () => {
