@@ -28,6 +28,9 @@ const QuestionFlow = ({ complaintId }: QuestionFlowProps) => {
   const [currentQuestionId, setCurrentQuestionId] = useState<string | null>(null);
   const [responses, setResponses] = useState<Record<string, any>>({});
   const [progress, setProgress] = useState(0);
+  const [textInput, setTextInput] = useState<string>('');
+  const [numberInput, setNumberInput] = useState<string>('');
+  const [dateInput, setDateInput] = useState<string>('');
 
   const complaintData = questionDatabase[complaintId];
 
@@ -41,8 +44,21 @@ const QuestionFlow = ({ complaintId }: QuestionFlowProps) => {
   useEffect(() => {
     if (currentPatient?.responses) {
       setResponses(currentPatient.responses);
+      
+      // Initialize input states from saved responses if they exist
+      if (currentQuestionId) {
+        const savedResponse = currentPatient.responses[currentQuestionId];
+        if (savedResponse) {
+          if (typeof savedResponse === 'string') {
+            setTextInput(savedResponse);
+            setDateInput(savedResponse);
+          } else if (typeof savedResponse === 'number') {
+            setNumberInput(String(savedResponse));
+          }
+        }
+      }
     }
-  }, [currentPatient]);
+  }, [currentPatient, currentQuestionId]);
 
   const handleAnswer = (answer: any) => {
     if (!currentQuestionId) return;
@@ -64,12 +80,32 @@ const QuestionFlow = ({ complaintId }: QuestionFlowProps) => {
     
     if (nextQuestionIds.length > 0) {
       setCurrentQuestionId(nextQuestionIds[0]);
+      // Clear input states when moving to next question
+      setTextInput('');
+      setNumberInput('');
+      setDateInput('');
       setProgress((prev) => Math.min(prev + 10, 90));
     } else {
       // No more questions, complete flow
       setProgress(100);
       navigate(`/summary`);
     }
+  };
+
+  // Handle text input submission
+  const handleTextSubmit = () => {
+    handleAnswer(textInput);
+  };
+
+  // Handle number input submission
+  const handleNumberSubmit = () => {
+    const numVal = parseInt(numberInput);
+    handleAnswer(isNaN(numVal) ? 0 : numVal);
+  };
+
+  // Handle date input submission
+  const handleDateSubmit = () => {
+    handleAnswer(dateInput);
   };
 
   if (!complaintData || !currentQuestionId) {
@@ -148,12 +184,12 @@ const QuestionFlow = ({ complaintId }: QuestionFlowProps) => {
             {currentQuestion.type === 'text' && (
               <div className="pt-2">
                 <Input 
-                  defaultValue={responses[currentQuestionId] || ''}
-                  onChange={(e) => setResponses({ ...responses, [currentQuestionId]: e.target.value })}
+                  value={textInput}
+                  onChange={(e) => setTextInput(e.target.value)}
                 />
                 <Button 
                   className="w-full mt-4" 
-                  onClick={() => handleAnswer(responses[currentQuestionId] || '')}
+                  onClick={handleTextSubmit}
                 >
                   Next
                 </Button>
@@ -164,12 +200,12 @@ const QuestionFlow = ({ complaintId }: QuestionFlowProps) => {
               <div className="pt-2">
                 <Input 
                   type="number"
-                  defaultValue={responses[currentQuestionId] || ''}
-                  onChange={(e) => setResponses({ ...responses, [currentQuestionId]: e.target.value })}
+                  value={numberInput}
+                  onChange={(e) => setNumberInput(e.target.value)}
                 />
                 <Button 
                   className="w-full mt-4" 
-                  onClick={() => handleAnswer(parseInt(responses[currentQuestionId] || '0'))}
+                  onClick={handleNumberSubmit}
                 >
                   Next
                 </Button>
@@ -180,12 +216,12 @@ const QuestionFlow = ({ complaintId }: QuestionFlowProps) => {
               <div className="pt-2">
                 <Input 
                   type="date"
-                  defaultValue={responses[currentQuestionId] || ''}
-                  onChange={(e) => setResponses({ ...responses, [currentQuestionId]: e.target.value })}
+                  value={dateInput}
+                  onChange={(e) => setDateInput(e.target.value)}
                 />
                 <Button 
                   className="w-full mt-4" 
-                  onClick={() => handleAnswer(responses[currentQuestionId] || '')}
+                  onClick={handleDateSubmit}
                 >
                   Next
                 </Button>
