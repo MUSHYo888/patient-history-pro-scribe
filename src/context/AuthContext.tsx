@@ -39,8 +39,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const getSession = async () => {
       setLoading(true);
       try {
-        // Initialize predefined accounts
-        await initializePredefinedAccounts();
+        // Try to initialize predefined accounts but don't fail if it doesn't work
+        try {
+          await initializePredefinedAccounts();
+        } catch (error) {
+          console.error('Error initializing predefined accounts:', error);
+          // Continue anyway - we'll handle auth normally
+        }
         
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) {
@@ -124,6 +129,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       throw error;
+    }
+    
+    // Redirect based on user role
+    if (data.user) {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', data.user.id)
+        .single();
+        
+      if (profileData?.role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/');
+      }
     }
   };
 

@@ -14,13 +14,22 @@ const Login = () => {
   const [emailOrUsername, setEmailOrUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { signIn } = useAuth();
+  const { signIn, session } = useAuth();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (session) {
+      navigate('/');
+    }
+  }, [session, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setLoginError(null);
 
     try {
       await signIn(emailOrUsername, password);
@@ -30,8 +39,9 @@ const Login = () => {
         description: "Welcome back!",
       });
       
-      // Navigation is handled in AuthContext based on user role
+      // Navigation is now handled in AuthContext based on user role
     } catch (error: any) {
+      setLoginError(error.message);
       toast({
         variant: "destructive",
         title: "Login failed",
@@ -76,6 +86,14 @@ const Login = () => {
                   required
                 />
               </div>
+              
+              {loginError && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Login Error</AlertTitle>
+                  <AlertDescription>{loginError}</AlertDescription>
+                </Alert>
+              )}
               
               <Alert variant="default" className="bg-blue-50 text-blue-800 border-blue-200">
                 <AlertCircle className="h-4 w-4" />
