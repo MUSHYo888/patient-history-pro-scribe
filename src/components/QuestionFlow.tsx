@@ -24,52 +24,65 @@ interface QuestionFlowProps {
 
 const QuestionFlow = ({ complaintId }: QuestionFlowProps) => {
   const navigate = useNavigate();
-  const { currentPatient, saveResponses, setChiefComplaint, setSummary } = usePatient();
+  const { currentPatient, saveResponses, setChiefComplaint } = usePatient();
   const [currentQuestionId, setCurrentQuestionId] = useState<string | null>(null);
   const [responses, setResponses] = useState<Record<string, any>>({});
   const [progress, setProgress] = useState(0);
   const [textInput, setTextInput] = useState<string>('');
   const [numberInput, setNumberInput] = useState<string>('');
   const [dateInput, setDateInput] = useState<string>('');
+  const [loadedInitialData, setLoadedInitialData] = useState(false);
 
   const complaintData = questionDatabase[complaintId];
 
+  // Set initial question and chief complaint only once
   useEffect(() => {
-    if (complaintData) {
+    if (complaintData && !loadedInitialData) {
       setCurrentQuestionId(complaintData.initialQuestion);
       setChiefComplaint(complaintData.name);
+      setLoadedInitialData(true);
     }
-  }, [complaintData, setChiefComplaint]);
+  }, [complaintData, setChiefComplaint, loadedInitialData]);
 
+  // Load responses from patient context and set initial inputs only when needed
   useEffect(() => {
-    if (currentPatient?.responses) {
+    if (currentPatient?.responses && !loadedInitialData) {
       setResponses(currentPatient.responses);
-      
-      // Initialize input states from saved responses if they exist
-      if (currentQuestionId) {
-        const savedResponse = currentPatient.responses[currentQuestionId];
-        if (savedResponse) {
-          if (typeof savedResponse === 'string') {
-            setTextInput(savedResponse);
-            setDateInput(savedResponse);
-          } else if (typeof savedResponse === 'number') {
-            setNumberInput(String(savedResponse));
-          }
+      setLoadedInitialData(true);
+    }
+  }, [currentPatient, loadedInitialData]);
+
+  // Update input states when current question changes
+  useEffect(() => {
+    if (currentQuestionId && currentPatient?.responses) {
+      const savedResponse = currentPatient.responses[currentQuestionId];
+      if (savedResponse) {
+        if (typeof savedResponse === 'string') {
+          setTextInput(savedResponse);
+          setDateInput(savedResponse);
+        } else if (typeof savedResponse === 'number') {
+          setNumberInput(String(savedResponse));
         }
+      } else {
+        // Clear inputs when there's no saved response for this question
+        setTextInput('');
+        setNumberInput('');
+        setDateInput('');
       }
     }
-  }, [currentPatient, currentQuestionId]);
+  }, [currentQuestionId, currentPatient?.responses]);
 
   const handleAnswer = (answer: any) => {
     if (!currentQuestionId) return;
 
+    // Update local state
     const newResponses = { ...responses, [currentQuestionId]: answer };
     setResponses(newResponses);
     
-    // Save responses after each answer
+    // Save responses to context
     saveResponses(newResponses);
     
-    // Find next question
+    // Get the next question
     const question = complaintData?.questions[currentQuestionId];
     if (!question) return;
     
@@ -80,10 +93,6 @@ const QuestionFlow = ({ complaintId }: QuestionFlowProps) => {
     
     if (nextQuestionIds.length > 0) {
       setCurrentQuestionId(nextQuestionIds[0]);
-      // Clear input states when moving to next question
-      setTextInput('');
-      setNumberInput('');
-      setDateInput('');
       setProgress((prev) => Math.min(prev + 10, 90));
     } else {
       // No more questions, complete flow
