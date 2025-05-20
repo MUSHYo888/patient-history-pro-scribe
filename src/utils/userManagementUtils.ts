@@ -1,9 +1,11 @@
-
 import { createClient } from '@supabase/supabase-js';
 
 // Set Supabase credentials from user input
 const SUPABASE_URL = 'https://lryjqfwkyerivzebacwv.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxyeWpxZndreWVyaXZ6ZWJhY3d2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc3ODA3NDMsImV4cCI6MjA2MzM1Njc0M30.RutX-wO0GNSyFzMolNErWYKIX_r-b4oFfQ76in4qiEA';
+
+// Create a single Supabase client instance to be reused
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 export interface UserData {
   id?: string;
@@ -14,95 +16,10 @@ export interface UserData {
   username?: string;
 }
 
-// Initialize pre-defined accounts when the app starts
+// Initialize pre-defined accounts when the app starts - simplified to focus on sign-in
 export const initializePredefinedAccounts = async () => {
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  
-  try {
-    // Check if admin account exists in profiles table
-    const { data: adminData } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('email', 'muslimkaki@gmail.com')
-      .single();
-    
-    // If admin account doesn't exist in profiles, try to create it
-    if (!adminData) {
-      try {
-        // First try regular signup
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email: 'muslimkaki@gmail.com',
-          password: '12345',
-        });
-        
-        if (signUpError) throw signUpError;
-        
-        // If successful, add to profiles table
-        if (signUpData.user) {
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .insert([{ 
-              id: signUpData.user.id, 
-              email: 'muslimkaki@gmail.com', 
-              full_name: 'Admin User', 
-              role: 'admin',
-              description: 'Main administrator account'
-            }]);
-          
-          if (profileError) throw profileError;
-          
-          console.log('Admin account created successfully');
-        }
-      } catch (error) {
-        console.error('Error creating admin account:', error);
-      }
-    }
-    
-    // Check if user account exists
-    const { data: userData } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('username', '99120105')
-      .single();
-    
-    // Create normal user account if it doesn't exist
-    if (!userData) {
-      try {
-        // Try regular signup
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email: 'user@example.com',
-          password: '12345',
-        });
-        
-        if (signUpError) throw signUpError;
-        
-        // If successful, add to profiles table
-        if (signUpData.user) {
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .insert([{ 
-              id: signUpData.user.id, 
-              email: 'user@example.com', 
-              full_name: 'Standard User', 
-              role: 'user',
-              description: 'Regular user account',
-              username: '99120105'
-            }]);
-          
-          if (profileError) throw profileError;
-          
-          console.log('Standard user account created successfully');
-        }
-      } catch (error) {
-        console.error('Error creating user account:', error);
-      }
-    }
-
-    return { success: true };
-  } catch (error) {
-    console.error('Error initializing predefined accounts:', error);
-    return { success: false, error };
-  }
+  console.log('This function is deprecated and no longer used.');
+  return { success: true };
 };
 
 export const createUser = async (
@@ -113,8 +30,6 @@ export const createUser = async (
   description: string = '', 
   username: string = ''
 ) => {
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  
   // Create new user with regular signup
   const { data, error } = await supabase.auth.signUp({
     email,

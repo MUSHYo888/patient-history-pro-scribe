@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Info } from "lucide-react";
 import { useAuth } from '@/context/AuthContext';
 
 const Login = () => {
@@ -32,6 +32,7 @@ const Login = () => {
     setLoginError(null);
 
     try {
+      console.log('Attempting login with:', emailOrUsername);
       await signIn(emailOrUsername, password);
       
       toast({
@@ -41,11 +42,12 @@ const Login = () => {
       
       // Navigation is now handled in AuthContext based on user role
     } catch (error: any) {
-      setLoginError(error.message);
+      console.error('Login error:', error);
+      setLoginError(error.message || 'Failed to log in. Please check your credentials and try again.');
       toast({
         variant: "destructive",
         title: "Login failed",
-        description: error.message,
+        description: error.message || 'Failed to log in. Please check your credentials and try again.',
       });
     } finally {
       setLoading(false);
@@ -96,7 +98,7 @@ const Login = () => {
               )}
               
               <Alert variant="default" className="bg-blue-50 text-blue-800 border-blue-200">
-                <AlertCircle className="h-4 w-4" />
+                <Info className="h-4 w-4" />
                 <AlertTitle>Pre-defined accounts</AlertTitle>
                 <AlertDescription className="text-xs mt-2">
                   <div className="mb-1"><strong>Admin:</strong> muslimkaki@gmail.com / 12345</div>

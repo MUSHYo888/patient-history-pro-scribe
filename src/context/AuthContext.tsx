@@ -4,11 +4,13 @@ import { createClient } from '@supabase/supabase-js';
 import { Session, User } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
-import { initializePredefinedAccounts } from '@/utils/userManagementUtils';
 
 // Set Supabase credentials from user input
 const SUPABASE_URL = 'https://lryjqfwkyerivzebacwv.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxyeWpxZndreWVyaXZ6ZWJhY3d2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc3ODA3NDMsImV4cCI6MjA2MzM1Njc0M30.RutX-wO0GNSyFzMolNErWYKIX_r-b4oFfQ76in4qiEA';
+
+// Create a single Supabase client instance
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 interface AuthContextType {
   user: User | null;
@@ -23,6 +25,25 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
+// Add the predefined accounts directly in AuthContext to ensure they are properly set
+const predefinedAccounts = [
+  {
+    email: 'muslimkaki@gmail.com',
+    password: '12345',
+    full_name: 'Admin User',
+    role: 'admin',
+    description: 'Main administrator account'
+  },
+  {
+    email: 'user@example.com',
+    password: '12345',
+    full_name: 'Standard User',
+    role: 'user',
+    description: 'Regular user account',
+    username: '99120105'
+  }
+];
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<any | null>(null);
@@ -31,22 +52,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
-  
-  // Create Supabase client with user provided values
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   useEffect(() => {
     const getSession = async () => {
       setLoading(true);
       try {
-        // Try to initialize predefined accounts but don't fail if it doesn't work
-        try {
-          await initializePredefinedAccounts();
-        } catch (error) {
-          console.error('Error initializing predefined accounts:', error);
-          // Continue anyway - we'll handle auth normally
-        }
-        
+        // Get current session
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) {
           console.error('Error getting session:', error);
@@ -76,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     getSession();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event);
       setSession(session);
       setUser(session?.user ?? null);
 
@@ -97,9 +109,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, [navigate, supabase]);
+  }, [navigate]);
 
   const signIn = async (emailOrUsername: string, password: string) => {
+    console.log('Signing in with:', emailOrUsername);
+    
     // First try to sign in with email
     let { data, error } = await supabase.auth.signInWithPassword({
       email: emailOrUsername,
@@ -108,6 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // If email sign in fails, check if it's a username
     if (error && emailOrUsername.indexOf('@') === -1) {
+      console.log('Email sign in failed, trying username lookup');
       // Look up the email for this username
       const { data: userData, error: userError } = await supabase
         .from('profiles')
@@ -115,7 +130,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('username', emailOrUsername)
         .single();
       
+      if (userError) {
+        console.error('Username lookup error:', userError);
+        throw new Error('Invalid username or password');
+      }
+      
       if (userData && userData.email) {
+        console.log('Found email for username:', userData.email);
         // Try again with the found email
         const result = await supabase.auth.signInWithPassword({
           email: userData.email,
@@ -124,12 +145,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         data = result.data;
         error = result.error;
+      } else {
+        throw new Error('Username not found');
       }
     }
 
     if (error) {
+      console.error('Final login error:', error);
       throw error;
     }
+    
+    console.log('Login successful');
     
     // Redirect based on user role
     if (data.user) {
