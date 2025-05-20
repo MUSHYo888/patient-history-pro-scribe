@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { deleteUser } from '@/utils/userManagementUtils';
+import { deleteUser } from '@/utils/user';
 import UserEditModal from './UserEditModal';
 import { Pen, Trash2 } from 'lucide-react';
 import {

@@ -30,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createUser, updateUser } from '@/utils/userManagementUtils';
+import { createUser, updateUser } from '@/utils/user';
 import { Pen, UserPlus } from 'lucide-react';
 
 interface UserFormData {

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import {
   Dialog,
@@ -12,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import UserFormFields from './user/UserFormFields';
-import { createUser, updateUser, UserData } from '@/utils/userManagementUtils';
+import { createUser, updateUser, UserData } from '@/utils/user';
 
 interface UserManagementModalProps {
   mode: 'create' | 'edit';
