@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
 import { Button } from '@/components/ui/button';
@@ -6,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 // Default values to prevent errors when environment variables are not set
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
@@ -15,14 +18,16 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [envMissing, setEnvMissing] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  // Show warning if environment variables are not set
-  React.useEffect(() => {
+  // Check if environment variables are set
+  useEffect(() => {
     if (import.meta.env.VITE_SUPABASE_URL === undefined || 
         import.meta.env.VITE_SUPABASE_ANON_KEY === undefined) {
+      setEnvMissing(true);
       toast({
         variant: "destructive",
         title: "Supabase configuration missing",
@@ -33,6 +38,17 @@ const Login = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Prevent login attempt if environment variables are missing
+    if (envMissing) {
+      toast({
+        variant: "destructive",
+        title: "Cannot proceed",
+        description: "Please set the required Supabase environment variables first.",
+      });
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -99,6 +115,23 @@ const Login = () => {
             </CardDescription>
           </CardHeader>
           
+          {envMissing && (
+            <CardContent className="pt-0">
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Configuration Missing</AlertTitle>
+                <AlertDescription>
+                  <p className="mb-2">Please set the following environment variables:</p>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li><code>VITE_SUPABASE_URL</code> - Your Supabase project URL</li>
+                    <li><code>VITE_SUPABASE_ANON_KEY</code> - Your Supabase project anonymous key</li>
+                  </ul>
+                  <p className="mt-2">These can be found in your Supabase project settings under API settings.</p>
+                </AlertDescription>
+              </Alert>
+            </CardContent>
+          )}
+          
           <form onSubmit={handleLogin}>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -110,6 +143,7 @@ const Login = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  disabled={envMissing}
                 />
               </div>
               
@@ -121,13 +155,18 @@ const Login = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  disabled={envMissing}
                 />
               </div>
             </CardContent>
             
             <CardFooter>
-              <Button className="w-full" type="submit" disabled={loading}>
-                {loading ? "Logging in..." : "Login"}
+              <Button 
+                className="w-full" 
+                type="submit" 
+                disabled={loading || envMissing}
+              >
+                {envMissing ? "Configuration Required" : (loading ? "Logging in..." : "Login")}
               </Button>
             </CardFooter>
           </form>
