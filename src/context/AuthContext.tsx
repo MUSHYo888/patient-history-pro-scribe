@@ -5,9 +5,9 @@ import { Session, User } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
 
-// Default values to prevent errors when environment variables are not set
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key';
+// Set Supabase credentials from user input
+const SUPABASE_URL = 'https://lryjqfwkyerivzebacwv.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxyeWpxZndreWVyaXZ6ZWJhY3d2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc3ODA3NDMsImV4cCI6MjA2MzM1Njc0M30.RutX-wO0GNSyFzMolNErWYKIX_r-b4oFfQ76in4qiEA';
 
 interface AuthContextType {
   user: User | null;
@@ -30,20 +30,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const navigate = useNavigate();
   
-  // Create Supabase client with fallback values
+  // Create Supabase client with user provided values
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-  // Show warning if environment variables are not set
-  useEffect(() => {
-    if (import.meta.env.VITE_SUPABASE_URL === undefined || 
-        import.meta.env.VITE_SUPABASE_ANON_KEY === undefined) {
-      toast({
-        variant: "destructive",
-        title: "Supabase configuration missing",
-        description: "Please set the VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.",
-      });
-    }
-  }, [toast]);
 
   useEffect(() => {
     const getSession = async () => {
