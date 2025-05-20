@@ -5,7 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { PatientProvider } from "./context/PatientContext";
-import { AuthProvider } from "./context/AuthContext";
+import { AuthProvider } from "./context/auth";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Index from "./pages/Index";
 import NewPatient from "./pages/NewPatient";

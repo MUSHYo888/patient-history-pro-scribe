@@ -1,50 +1,13 @@
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { createClient } from '@supabase/supabase-js';
-import { Session, User } from '@supabase/supabase-js';
+import React, { useState, useEffect } from 'react';
+import { User, Session } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
+import { AuthProviderProps } from './types';
+import { supabase } from './supabaseClient';
+import AuthContext from './AuthContext';
 
-// Set Supabase credentials from user input
-const SUPABASE_URL = 'https://lryjqfwkyerivzebacwv.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxyeWpxZndreWVyaXZ6ZWJhY3d2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc3ODA3NDMsImV4cCI6MjA2MzM1Njc0M30.RutX-wO0GNSyFzMolNErWYKIX_r-b4oFfQ76in4qiEA';
-
-// Create a single Supabase client instance
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-interface AuthContextType {
-  user: User | null;
-  profile: any | null;
-  session: Session | null;
-  loading: boolean;
-  signIn: (emailOrUsername: string, password: string) => Promise<void>;
-  signOut: () => Promise<void>;
-  isAdmin: boolean;
-  updateProfile: (fullName: string, description: string) => Promise<void>;
-}
-
-const AuthContext = createContext<AuthContextType>({} as AuthContextType);
-
-// Add the predefined accounts directly in AuthContext to ensure they are properly set
-const predefinedAccounts = [
-  {
-    email: 'muslimkaki@gmail.com',
-    password: '12345',
-    full_name: 'Admin User',
-    role: 'admin',
-    description: 'Main administrator account'
-  },
-  {
-    email: 'user@example.com',
-    password: '12345',
-    full_name: 'Standard User',
-    role: 'user',
-    description: 'Regular user account',
-    username: '99120105'
-  }
-];
-
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<any | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -226,5 +189,3 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
-
-export const useAuth = () => useContext(AuthContext);
