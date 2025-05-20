@@ -4,11 +4,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import { usePatient } from '@/context/PatientContext';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
-import { LogOut, User } from 'lucide-react';
+import { LogOut, User, UserCircle } from 'lucide-react';
 
 const Header = () => {
   const { currentPatient } = usePatient();
-  const { user, isAdmin, signOut } = useAuth();
+  const { user, profile, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
@@ -46,6 +46,12 @@ const Header = () => {
                 >
                   Patients
                 </Link>
+                <Link 
+                  to="/profile" 
+                  className="text-gray-600 hover:text-primary px-3 py-2 rounded-md text-sm font-medium"
+                >
+                  My Profile
+                </Link>
                 
                 {isAdmin && (
                   <Link 
@@ -57,9 +63,9 @@ const Header = () => {
                 )}
                 
                 <div className="flex items-center space-x-2 ml-2 pl-2 border-l border-gray-200">
-                  <div className="text-sm text-muted-foreground">
-                    <User className="inline h-4 w-4 mr-1" />
-                    {user.email}
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <UserCircle className="inline h-4 w-4 mr-1" />
+                    {profile?.full_name || user.email}
                   </div>
                   <Button variant="outline" size="sm" onClick={handleSignOut}>
                     <LogOut className="h-4 w-4" />

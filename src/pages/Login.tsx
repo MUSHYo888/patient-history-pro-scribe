@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createClient } from '@supabase/supabase-js';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,70 +8,34 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from '@/components/ui/use-toast';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
-
-// Set Supabase credentials from user input
-const SUPABASE_URL = 'https://lryjqfwkyerivzebacwv.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxyeWpxZndreWVyaXZ6ZWJhY3d2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc3ODA3NDMsImV4cCI6MjA2MzM1Njc0M30.RutX-wO0GNSyFzMolNErWYKIX_r-b4oFfQ76in4qiEA';
+import { useAuth } from '@/context/AuthContext';
 
 const Login = () => {
-  const [email, setEmail] = useState('');
+  const [emailOrUsername, setEmailOrUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const { signIn } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        toast({
-          variant: "destructive",
-          title: "Login failed",
-          description: error.message,
-        });
-        return;
-      }
-
-      // Check for admin role
-      const { data: userData, error: userError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', data.user?.id)
-        .single();
-
-      if (userError) {
-        toast({
-          variant: "destructive",
-          title: "Error fetching user profile",
-          description: userError.message,
-        });
-        return;
-      }
-
-      // Redirect to admin dashboard or regular dashboard based on role
-      if (userData.role === 'admin') {
-        navigate('/admin');
-      } else {
-        navigate('/');
-      }
-
+      await signIn(emailOrUsername, password);
+      
       toast({
         title: "Login successful",
         description: "Welcome back!",
       });
-    } catch (error) {
+      
+      // Navigation is handled in AuthContext based on user role
+    } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "An error occurred",
-        description: "Please try again later.",
+        title: "Login failed",
+        description: error.message,
       });
     } finally {
       setLoading(false);
@@ -93,13 +56,12 @@ const Login = () => {
           <form onSubmit={handleLogin}>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="emailOrUsername">Email or Username</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="name@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  id="emailOrUsername"
+                  placeholder="Email or Username"
+                  value={emailOrUsername}
+                  onChange={(e) => setEmailOrUsername(e.target.value)}
                   required
                 />
               </div>
@@ -114,6 +76,15 @@ const Login = () => {
                   required
                 />
               </div>
+              
+              <Alert variant="info" className="bg-blue-50 text-blue-800 border-blue-200">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Pre-defined accounts</AlertTitle>
+                <AlertDescription className="text-xs mt-2">
+                  <div className="mb-1"><strong>Admin:</strong> muslimkaki@gmail.com / 12345</div>
+                  <div><strong>User:</strong> 99120105 / 12345</div>
+                </AlertDescription>
+              </Alert>
             </CardContent>
             
             <CardFooter>
@@ -133,4 +104,3 @@ const Login = () => {
 };
 
 export default Login;
-

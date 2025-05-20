@@ -10,9 +10,56 @@ export interface UserData {
   email: string;
   full_name: string;
   role: string;
+  description?: string;
+  username?: string;
 }
 
-export const createUser = async (email: string, password: string, fullName: string, role: string) => {
+// Initialize pre-defined accounts when the app starts
+export const initializePredefinedAccounts = async () => {
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  
+  try {
+    // Check if admin account exists
+    const { data: adminData } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('email', 'muslimkaki@gmail.com')
+      .single();
+    
+    // Create admin account if it doesn't exist
+    if (!adminData) {
+      await createUser('muslimkaki@gmail.com', '12345', 'Admin User', 'admin', 'Main administrator account');
+      console.log('Admin account created successfully');
+    }
+    
+    // Check if normal user account exists
+    const { data: userData } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('username', '99120105')
+      .single();
+    
+    // Create normal user account if it doesn't exist
+    if (!userData) {
+      await createUser('user@example.com', '12345', 'Standard User', 'user', 'Regular user account', '99120105');
+      console.log('Standard user account created successfully');
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error initializing predefined accounts:', error);
+    return { success: false, error };
+  }
+};
+
+export const createUser = async (
+  email: string, 
+  password: string, 
+  fullName: string, 
+  role: string, 
+  description: string = '', 
+  username: string = ''
+) => {
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   
   // Create new user
@@ -20,7 +67,10 @@ export const createUser = async (email: string, password: string, fullName: stri
     email,
     password,
     email_confirm: true,
-    user_metadata: { full_name: fullName }
+    user_metadata: { 
+      full_name: fullName,
+      username: username || undefined
+    }
   });
 
   if (error) throw error;
@@ -30,7 +80,14 @@ export const createUser = async (email: string, password: string, fullName: stri
     const { error: profileError } = await supabase
       .from('profiles')
       .insert([
-        { id: data.user.id, email, full_name: fullName, role }
+        { 
+          id: data.user.id, 
+          email, 
+          full_name: fullName, 
+          role,
+          description,
+          username: username || null
+        }
       ]);
 
     if (profileError) throw profileError;
@@ -39,7 +96,15 @@ export const createUser = async (email: string, password: string, fullName: stri
   return data;
 };
 
-export const updateUser = async (userId: string, password: string | null, fullName: string, role: string) => {
+export const updateUser = async (
+  userId: string, 
+  password: string | null, 
+  fullName: string, 
+  role: string, 
+  description: string = '',
+  username: string | null = null,
+  email: string | null = null
+) => {
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   
   // Update auth if password is provided
@@ -51,13 +116,87 @@ export const updateUser = async (userId: string, password: string | null, fullNa
     if (error) throw error;
   }
 
+  // Update user data in auth if email is provided
+  if (email) {
+    const { error } = await supabase.auth.admin.updateUserById(
+      userId,
+      { email }
+    );
+    if (error) throw error;
+  }
+
+  // Prepare update data
+  const updateData: any = { 
+    full_name: fullName, 
+    role,
+    description
+  };
+  
+  // Only add username if provided
+  if (username !== null) {
+    updateData.username = username;
+  }
+  
+  // Only add email if provided
+  if (email !== null) {
+    updateData.email = email;
+  }
+
   // Update profile
   const { error: profileError } = await supabase
     .from('profiles')
-    .update({ full_name: fullName, role })
+    .update(updateData)
     .eq('id', userId);
 
   if (profileError) throw profileError;
 
+  return { success: true };
+};
+
+export const deleteUser = async (userId: string) => {
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  
+  // Delete user from Supabase Auth
+  const { error: authError } = await supabase.auth.admin.deleteUser(userId);
+  if (authError) throw authError;
+  
+  // Delete profile from profiles table
+  const { error: profileError } = await supabase
+    .from('profiles')
+    .delete()
+    .eq('id', userId);
+    
+  if (profileError) throw profileError;
+  
+  return { success: true };
+};
+
+export const getUserProfile = async (userId: string) => {
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single();
+    
+  if (error) throw error;
+  
+  return data;
+};
+
+export const updateUserProfile = async (userId: string, fullName: string, description: string) => {
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  
+  const { error } = await supabase
+    .from('profiles')
+    .update({ 
+      full_name: fullName,
+      description 
+    })
+    .eq('id', userId);
+    
+  if (error) throw error;
+  
   return { success: true };
 };

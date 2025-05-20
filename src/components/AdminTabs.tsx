@@ -7,6 +7,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import UsersTable from '@/components/UsersTable';
+import UserManager from '@/components/admin/UserManager';
 
 interface AdminTabsProps {
   users: any[];
@@ -19,13 +20,18 @@ const AdminTabs = ({ users, loading, onUserUpdate }: AdminTabsProps) => {
     <Tabs defaultValue="users">
       <TabsList className="mb-4">
         <TabsTrigger value="users">Users</TabsTrigger>
+        <TabsTrigger value="user-manager">User Management</TabsTrigger>
         <TabsTrigger value="patients">Patient Records</TabsTrigger>
         <TabsTrigger value="reports">PDF Reports</TabsTrigger>
       </TabsList>
       
       <TabsContent value="users" className="bg-white p-6 rounded-md border">
-        <h2 className="text-xl font-semibold mb-4">User Management</h2>
+        <h2 className="text-xl font-semibold mb-4">User Summary</h2>
         <UsersTable users={users} loading={loading} onUserUpdate={onUserUpdate} />
+      </TabsContent>
+      
+      <TabsContent value="user-manager" className="bg-white p-6 rounded-md border">
+        <UserManager />
       </TabsContent>
       
       <TabsContent value="patients" className="bg-white p-6 rounded-md border">
