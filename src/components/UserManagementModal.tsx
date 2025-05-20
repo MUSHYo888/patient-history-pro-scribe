@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@supabase/supabase-js';
 import {
   Dialog,
   DialogContent,
@@ -30,7 +30,10 @@ const UserManagementModal = ({ mode, user, onSuccess }: UserManagementModalProps
   const [role, setRole] = useState(user?.role || 'user');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const supabase = createClientComponentClient();
+  const supabase = createClient(
+    import.meta.env.VITE_SUPABASE_URL || '',
+    import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

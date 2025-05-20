@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@supabase/supabase-js';
 import { useToast } from '@/components/ui/use-toast';
 import Header from '@/components/Header';
 import {
@@ -11,15 +11,19 @@ import {
 } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, FilePdf, UserPlus, Database, LogOut } from 'lucide-react';
+import { Users, File, UserPlus, Database, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import UserManagementModal from '@/components/UserManagementModal';
 
 const Admin = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const supabase = createClientComponentClient();
+  const supabase = createClient(
+    import.meta.env.VITE_SUPABASE_URL || '',
+    import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+  );
 
   useEffect(() => {
     checkAdminAuth();
@@ -120,7 +124,7 @@ const Admin = () => {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">PDF Reports</CardTitle>
-                <FilePdf className="h-4 w-4 text-muted-foreground" />
+                <File className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">--</div>
@@ -133,9 +137,7 @@ const Admin = () => {
                 <UserPlus className="h-4 w-4 text-primary" />
               </CardHeader>
               <CardContent>
-                <Button className="w-full mt-2" size="sm">
-                  Create New User
-                </Button>
+                <UserManagementModal mode="create" onSuccess={fetchUsers} />
               </CardContent>
             </Card>
           </div>
@@ -170,7 +172,7 @@ const Admin = () => {
                             <td className="py-2">{user.email || 'N/A'}</td>
                             <td className="py-2">{user.role || 'user'}</td>
                             <td className="py-2">
-                              <Button variant="outline" size="sm">Edit</Button>
+                              <UserManagementModal mode="edit" user={user} onSuccess={fetchUsers} />
                             </td>
                           </tr>
                         ))
