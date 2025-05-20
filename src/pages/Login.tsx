@@ -77,7 +77,7 @@ const Login = () => {
                 />
               </div>
               
-              <Alert variant="info" className="bg-blue-50 text-blue-800 border-blue-200">
+              <Alert variant="default" className="bg-blue-50 text-blue-800 border-blue-200">
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Pre-defined accounts</AlertTitle>
                 <AlertDescription className="text-xs mt-2">
