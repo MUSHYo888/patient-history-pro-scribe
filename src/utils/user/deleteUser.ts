@@ -1,9 +1,7 @@
 
-import { getSupabaseClient } from './supabaseClient';
+import { supabase } from './supabaseClient';
 
 export const deleteUser = async (userId: string) => {
-  const supabase = getSupabaseClient();
-  
   // Delete user from Supabase Auth
   const { error: authError } = await supabase.auth.admin.deleteUser(userId);
   if (authError) throw authError;

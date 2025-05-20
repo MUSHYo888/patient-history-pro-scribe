@@ -1,9 +1,7 @@
 
-import { getSupabaseClient } from './supabaseClient';
+import { supabase } from './supabaseClient';
 
 export const getUserProfile = async (userId: string) => {
-  const supabase = getSupabaseClient();
-  
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
@@ -16,8 +14,6 @@ export const getUserProfile = async (userId: string) => {
 };
 
 export const updateUserProfile = async (userId: string, fullName: string, description: string) => {
-  const supabase = getSupabaseClient();
-  
   const { error } = await supabase
     .from('profiles')
     .update({ 

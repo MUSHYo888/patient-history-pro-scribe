@@ -1,5 +1,5 @@
 
-import { getSupabaseClient } from './supabaseClient';
+import { supabase } from './supabaseClient';
 
 export const updateUser = async (
   userId: string, 
@@ -10,8 +10,6 @@ export const updateUser = async (
   username: string | null = null,
   email: string | null = null
 ) => {
-  const supabase = getSupabaseClient();
-  
   // Update auth if password is provided
   if (password) {
     const { error } = await supabase.auth.admin.updateUserById(
