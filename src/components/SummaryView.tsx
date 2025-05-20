@@ -12,6 +12,7 @@ import {
   CardHeader, 
   CardTitle 
 } from '@/components/ui/card';
+import { AlertTriangle } from 'lucide-react';
 
 const SummaryView = () => {
   const { currentPatient, setSummary } = usePatient();
@@ -36,8 +37,12 @@ const SummaryView = () => {
     // In a real implementation, this would generate and download a PDF
   };
 
+  const handlePrintSummary = () => {
+    window.print();
+  };
+
   return (
-    <Card className="w-full max-w-4xl mx-auto">
+    <Card className="w-full max-w-4xl mx-auto print:shadow-none">
       <CardHeader>
         <CardTitle>Patient Summary</CardTitle>
         <CardDescription>
@@ -54,9 +59,29 @@ const SummaryView = () => {
               if (line.startsWith('## ')) {
                 return <h2 key={index} className="text-xl font-bold mt-4">{line.substring(3)}</h2>;
               }
+              if (line.startsWith('### WARNING:')) {
+                return (
+                  <div key={index} className="bg-red-50 border-l-4 border-red-500 p-4 my-4">
+                    <div className="flex">
+                      <div className="flex-shrink-0">
+                        <AlertTriangle className="h-5 w-5 text-red-400" />
+                      </div>
+                      <div className="ml-3">
+                        <h3 className="text-lg font-medium text-red-800">{line.substring(4)}</h3>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
               if (line.startsWith('### ')) {
                 return <h3 key={index} className="text-lg font-bold mt-3">{line.substring(4)}</h3>;
               }
+              
+              // Style red flag information differently
+              if (index > 0 && currentPatient.summary.split('\n')[index-1].includes('WARNING:')) {
+                return <p key={index} className="my-2 text-red-600 font-medium">{line}</p>;
+              }
+              
               return line ? <p key={index} className="my-2">{line}</p> : <br key={index} />;
             })
           ) : (
@@ -64,13 +89,18 @@ const SummaryView = () => {
           )}
         </div>
       </CardContent>
-      <CardFooter className="flex justify-between">
+      <CardFooter className="flex justify-between print:hidden">
         <Button variant="outline" onClick={() => navigate('/')}>
           Back to Home
         </Button>
-        <Button onClick={handleExportPDF}>
-          Export PDF
-        </Button>
+        <div className="space-x-2">
+          <Button variant="outline" onClick={handlePrintSummary}>
+            Print
+          </Button>
+          <Button onClick={handleExportPDF}>
+            Export PDF
+          </Button>
+        </div>
       </CardFooter>
     </Card>
   );

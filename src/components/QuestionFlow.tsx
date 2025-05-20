@@ -15,6 +15,8 @@ import {
   CardTitle 
 } from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertTriangle } from 'lucide-react';
 
 interface QuestionFlowProps {
   complaintId: string;
@@ -75,26 +77,45 @@ const QuestionFlow = ({ complaintId }: QuestionFlowProps) => {
   }
 
   const currentQuestion = complaintData.questions[currentQuestionId];
+  const totalQuestions = Object.keys(complaintData.questions).length;
+  // Estimate progress considering red flag questions might be skipped
+  const adjustedProgress = Math.min(
+    (Object.keys(responses).length / (totalQuestions * 0.7)) * 100,
+    100
+  );
 
   return (
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
         <CardTitle>{complaintData.name}</CardTitle>
         <CardDescription>
-          Question {Object.keys(responses).length + 1} of {Object.keys(complaintData.questions).length}
+          Question {Object.keys(responses).length + 1} of approximately {Math.ceil(totalQuestions * 0.7)}
+          <span className="text-xs text-muted-foreground ml-2">(some questions may be skipped based on your answers)</span>
         </CardDescription>
         <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
           <div 
             className="bg-primary h-2.5 rounded-full" 
-            style={{ width: `${progress}%` }}
+            style={{ width: `${adjustedProgress}%` }}
           ></div>
         </div>
       </CardHeader>
       
       <CardContent>
         <div className="space-y-6">
+          {currentQuestion.isRedFlag && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Important Medical Question</AlertTitle>
+              <AlertDescription>
+                This question helps identify potentially serious conditions.
+              </AlertDescription>
+            </Alert>
+          )}
+          
           <div className="space-y-2">
-            <Label className="text-lg font-medium">{currentQuestion.text}</Label>
+            <Label className={`text-lg font-medium ${currentQuestion.isRedFlag ? 'text-destructive' : ''}`}>
+              {currentQuestion.text}
+            </Label>
             
             {currentQuestion.type === 'yes_no' && (
               <RadioGroup defaultValue={responses[currentQuestionId] || ''} className="flex space-x-4 pt-2">
