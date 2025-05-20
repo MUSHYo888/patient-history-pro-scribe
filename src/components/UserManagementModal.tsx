@@ -1,5 +1,5 @@
+
 import React, { useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import {
   Dialog,
   DialogContent,
@@ -10,18 +10,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
-// Default values to prevent errors when environment variables are not set
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key';
+import UserFormFields from './user/UserFormFields';
+import { createUser, updateUser, UserData } from '@/utils/userManagementUtils';
 
 interface UserManagementModalProps {
   mode: 'create' | 'edit';
-  user?: any;
+  user?: UserData;
   onSuccess?: () => void;
 }
 
@@ -33,7 +28,6 @@ const UserManagementModal = ({ mode, user, onSuccess }: UserManagementModalProps
   const [role, setRole] = useState(user?.role || 'user');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,26 +35,7 @@ const UserManagementModal = ({ mode, user, onSuccess }: UserManagementModalProps
 
     try {
       if (mode === 'create') {
-        // Create new user
-        const { data, error } = await supabase.auth.admin.createUser({
-          email,
-          password,
-          email_confirm: true,
-          user_metadata: { full_name: fullName }
-        });
-
-        if (error) throw error;
-
-        // Add user to profiles table with role
-        if (data.user) {
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .insert([
-              { id: data.user.id, email, full_name: fullName, role }
-            ]);
-
-          if (profileError) throw profileError;
-        }
+        await createUser(email, password, fullName, role);
 
         toast({
           title: 'User created',
@@ -68,23 +43,8 @@ const UserManagementModal = ({ mode, user, onSuccess }: UserManagementModalProps
         });
       } else {
         // Update existing user
-        if (user) {
-          // Update auth if password is provided
-          if (password) {
-            const { error } = await supabase.auth.admin.updateUserById(
-              user.id,
-              { password }
-            );
-            if (error) throw error;
-          }
-
-          // Update profile
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .update({ full_name: fullName, role })
-            .eq('id', user.id);
-
-          if (profileError) throw profileError;
+        if (user?.id) {
+          await updateUser(user.id, password || null, fullName, role);
 
           toast({
             title: 'User updated',
@@ -124,67 +84,17 @@ const UserManagementModal = ({ mode, user, onSuccess }: UserManagementModalProps
         </DialogHeader>
         
         <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="email" className="text-right">
-                Email
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={mode === 'edit'}
-                className="col-span-3"
-                required
-              />
-            </div>
-            
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="fullName" className="text-right">
-                Full Name
-              </Label>
-              <Input
-                id="fullName"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className="col-span-3"
-              />
-            </div>
-            
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="password" className="text-right">
-                Password
-              </Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="col-span-3"
-                required={mode === 'create'}
-                placeholder={mode === 'edit' ? '(Leave blank to keep current)' : ''}
-              />
-            </div>
-            
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="role" className="text-right">
-                Role
-              </Label>
-              <Select
-                value={role}
-                onValueChange={(value) => setRole(value)}
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="user">User</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          <UserFormFields
+            email={email}
+            setEmail={setEmail}
+            fullName={fullName}
+            setFullName={setFullName}
+            password={password}
+            setPassword={setPassword}
+            role={role}
+            setRole={setRole}
+            mode={mode}
+          />
           
           <DialogFooter>
             <Button type="submit" disabled={loading}>
