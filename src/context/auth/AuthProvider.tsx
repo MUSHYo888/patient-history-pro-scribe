@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
 import { AuthProviderProps } from './types';
 import { supabase } from './supabaseClient';
@@ -15,6 +15,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [isAdmin, setIsAdmin] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const getSession = async () => {
@@ -24,6 +25,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) {
           console.error('Error getting session:', error);
+          setLoading(false);
           return;
         }
 
@@ -31,15 +33,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          const { data, error } = await supabase
+          const { data, error: profileError } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', session.user.id)
             .single();
 
+          if (profileError) {
+            console.error('Error fetching user profile:', profileError);
+          }
+
           if (data) {
             setProfile(data);
             setIsAdmin(data.role === 'admin');
+          }
+          
+          // After setting up user data, redirect appropriately if on login page
+          if (location.pathname === '/login') {
+            if (data?.role === 'admin') {
+              navigate('/admin');
+            } else {
+              navigate('/');
+            }
           }
         }
       } finally {
@@ -55,90 +70,114 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', session.user.id)
           .single();
 
+        if (error) {
+          console.error('Error fetching user profile during auth change:', error);
+        }
+
         setProfile(data || null);
         setIsAdmin(data?.role === 'admin' || false);
+        
+        // Redirect on sign in if on login page
+        if (event === 'SIGNED_IN' && location.pathname === '/login') {
+          if (data?.role === 'admin') {
+            navigate('/admin');
+          } else {
+            navigate('/');
+          }
+        }
       } else {
         setProfile(null);
         setIsAdmin(false);
+        
+        // Redirect to login page on sign out
+        if (event === 'SIGNED_OUT' && location.pathname !== '/welcome' && location.pathname !== '/login') {
+          navigate('/login');
+        }
       }
     });
 
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, [navigate]);
+  }, [navigate, location.pathname]);
 
   const signIn = async (emailOrUsername: string, password: string) => {
+    setLoading(true);
     console.log('Signing in with:', emailOrUsername);
     
-    // First try to sign in with email
-    let { data, error } = await supabase.auth.signInWithPassword({
-      email: emailOrUsername,
-      password,
-    });
+    try {
+      // First try to sign in with email
+      let { data, error } = await supabase.auth.signInWithPassword({
+        email: emailOrUsername,
+        password,
+      });
 
-    // If email sign in fails, check if it's a username
-    if (error && emailOrUsername.indexOf('@') === -1) {
-      console.log('Email sign in failed, trying username lookup');
-      // Look up the email for this username
-      const { data: userData, error: userError } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('username', emailOrUsername)
-        .single();
-      
-      if (userError) {
-        console.error('Username lookup error:', userError);
-        throw new Error('Invalid username or password');
-      }
-      
-      if (userData && userData.email) {
-        console.log('Found email for username:', userData.email);
-        // Try again with the found email
-        const result = await supabase.auth.signInWithPassword({
-          email: userData.email,
-          password,
-        });
+      // If email sign in fails, check if it's a username
+      if (error && emailOrUsername.indexOf('@') === -1) {
+        console.log('Email sign in failed, trying username lookup');
+        // Look up the email for this username
+        const { data: userData, error: userError } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('username', emailOrUsername)
+          .single();
         
-        data = result.data;
-        error = result.error;
-      } else {
-        throw new Error('Username not found');
+        if (userError) {
+          console.error('Username lookup error:', userError);
+          throw new Error('Invalid username or password');
+        }
+        
+        if (userData && userData.email) {
+          console.log('Found email for username:', userData.email);
+          // Try again with the found email
+          const result = await supabase.auth.signInWithPassword({
+            email: userData.email,
+            password,
+          });
+          
+          data = result.data;
+          error = result.error;
+        } else {
+          throw new Error('Username not found');
+        }
       }
-    }
 
-    if (error) {
-      console.error('Final login error:', error);
+      if (error) {
+        console.error('Final login error:', error);
+        throw error;
+      }
+      
+      console.log('Login successful');
+      
+      // Note: Redirect is now handled by the auth state change listener
+      // This ensures the redirection happens after all auth-related state is updated
+    } catch (error: any) {
       throw error;
-    }
-    
-    console.log('Login successful');
-    
-    // Redirect based on user role
-    if (data.user) {
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', data.user.id)
-        .single();
-        
-      if (profileData?.role === 'admin') {
-        navigate('/admin');
-      } else {
-        navigate('/');
-      }
+    } finally {
+      setLoading(false);
     }
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    navigate('/login');
+    setLoading(true);
+    try {
+      await supabase.auth.signOut();
+      // Redirection handled by auth state change listener
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Sign out failed",
+        description: error.message,
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const updateProfile = async (fullName: string, description: string) => {

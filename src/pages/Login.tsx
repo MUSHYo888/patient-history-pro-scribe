@@ -1,12 +1,13 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Info } from "lucide-react";
+import { AlertCircle, Info, Loader2 } from "lucide-react";
 import { useAuth } from '@/context/auth';
 
 const Login = () => {
@@ -16,7 +17,7 @@ const Login = () => {
   const [loginError, setLoginError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { signIn, session } = useAuth();
+  const { signIn, session, loading: authLoading } = useAuth();
 
   // Redirect if already logged in
   useEffect(() => {
@@ -52,6 +53,15 @@ const Login = () => {
       setLoading(false);
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="mt-4 text-sm text-gray-500">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
@@ -112,7 +122,12 @@ const Login = () => {
                 type="submit" 
                 disabled={loading}
               >
-                {loading ? "Logging in..." : "Login"}
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Logging in...
+                  </>
+                ) : "Login"}
               </Button>
             </CardFooter>
           </form>
