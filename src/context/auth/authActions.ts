@@ -1,7 +1,7 @@
 
-import { useToast } from '@/hooks/use-toast';
 import { NavigateFunction } from 'react-router-dom';
 import { supabase } from './supabaseClient';
+import { ToastType } from './types';
 
 // Sign in function
 export const signIn = async (
@@ -72,7 +72,7 @@ export const signOut = async (
   setSession: (session: null) => void,
   setIsAdmin: (isAdmin: boolean) => void,
   navigate: NavigateFunction,
-  toast: ReturnType<typeof useToast>
+  toast: ToastType
 ) => {
   try {
     setLoading(true);
@@ -90,7 +90,7 @@ export const signOut = async (
     navigate('/login', { replace: true });
     
   } catch (error: any) {
-    toast({
+    toast.toast({
       variant: "destructive",
       title: "Sign out failed",
       description: error.message,
@@ -107,7 +107,7 @@ export const updateProfile = async (
   description: string,
   setProfile: (profile: any) => void,
   profile: any,
-  toast: ReturnType<typeof useToast>
+  toast: ToastType
 ) => {
   try {
     const { error } = await supabase
@@ -127,13 +127,13 @@ export const updateProfile = async (
       description
     });
     
-    toast({
+    toast.toast({
       title: "Profile updated",
       description: "Your profile has been updated successfully",
     });
     
   } catch (error: any) {
-    toast({
+    toast.toast({
       variant: "destructive",
       title: "Update failed",
       description: error.message,

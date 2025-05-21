@@ -16,6 +16,12 @@ export interface AuthProviderProps {
   children: React.ReactNode;
 }
 
+export interface ToastType {
+  toast: (props: any) => void;
+  dismiss: (toastId?: string) => void;
+  toasts: any[];
+}
+
 export const predefinedAccounts = [
   {
     email: 'muslimkaki@gmail.com',
