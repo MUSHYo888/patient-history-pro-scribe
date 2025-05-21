@@ -1,6 +1,5 @@
 
 import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import { useToast } from '@/components/ui/use-toast';
 import Header from '@/components/Header';
 import { Button } from '@/components/ui/button';
@@ -8,79 +7,76 @@ import { LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import AdminDashboardCards from '@/components/AdminDashboardCards';
 import AdminTabs from '@/components/AdminTabs';
-
-// Default values to prevent errors when environment variables are not set
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key';
+import { supabase } from '@/context/auth/supabaseClient';
 
 const Admin = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   useEffect(() => {
-    // Check if Supabase environment variables are set
-    if (import.meta.env.VITE_SUPABASE_URL === undefined || 
-        import.meta.env.VITE_SUPABASE_ANON_KEY === undefined) {
-      toast({
-        variant: "destructive",
-        title: "Supabase configuration missing",
-        description: "Please set the VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.",
-      });
-      return;
-    }
-    
     checkAdminAuth();
     fetchUsers();
   }, []);
 
   const checkAdminAuth = async () => {
-    const { data, error } = await supabase.auth.getSession();
-    
-    if (error || !data.session) {
+    try {
+      const { data, error } = await supabase.auth.getSession();
+      
+      if (error || !data.session) {
+        toast({
+          variant: "destructive",
+          title: "Authentication required",
+          description: "Please login to access the admin dashboard",
+        });
+        navigate('/login');
+        return;
+      }
+
+      // Check if user is an admin
+      const { data: userData, error: userError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', data.session.user.id)
+        .single();
+
+      if (userError || userData?.role !== 'admin') {
+        toast({
+          variant: "destructive",
+          title: "Unauthorized",
+          description: "You don't have permission to access this page",
+        });
+        navigate('/');
+        return;
+      }
+    } catch (error: any) {
+      console.error('Auth error:', error);
       toast({
         variant: "destructive",
-        title: "Authentication required",
-        description: "Please login to access the admin dashboard",
+        title: "Authentication error",
+        description: error.message || "Please try logging in again",
       });
       navigate('/login');
-      return;
-    }
-
-    // Check if user is an admin
-    const { data: userData, error: userError } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', data.session.user.id)
-      .single();
-
-    if (userError || userData?.role !== 'admin') {
-      toast({
-        variant: "destructive",
-        title: "Unauthorized",
-        description: "You don't have permission to access this page",
-      });
-      navigate('/');
-      return;
     }
   };
 
   const fetchUsers = async () => {
+    setLoading(true);
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*');
+        .select('*')
+        .order('created_at', { ascending: false });
       
       if (error) throw error;
       setUsers(data || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching users:', error);
       toast({
         variant: "destructive",
         title: "Failed to load users",
-        description: "Please try again later",
+        description: error.message || "Please try again later",
       });
     } finally {
       setLoading(false);

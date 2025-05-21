@@ -5,12 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Users, FileText, UserPlus, Database } from 'lucide-react';
 import UserManagementModal from '@/components/UserManagementModal';
 import { useQuery } from '@tanstack/react-query';
-import { createClient } from '@supabase/supabase-js';
-
-// Default values to prevent errors when environment variables are not set
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key';
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+import { supabase } from '@/context/auth/supabaseClient';
+import { useToast } from '@/components/ui/use-toast';
 
 interface AdminDashboardCardsProps {
   userCount: number;
@@ -18,23 +14,34 @@ interface AdminDashboardCardsProps {
 }
 
 const AdminDashboardCards = ({ userCount, onCreateUserSuccess }: AdminDashboardCardsProps) => {
+  const { toast } = useToast();
+
   const { data: patientCount = 0, isLoading: patientsLoading } = useQuery({
     queryKey: ['patientCount'],
     queryFn: async () => {
       try {
         // In a real app, this would fetch from the actual patients table
-        // For now using mock data
         const { count, error } = await supabase
           .from('patients')
           .select('*', { count: 'exact', head: true });
         
-        if (error) throw error;
+        if (error) {
+          console.error('Patient count error:', error);
+          toast({
+            variant: "destructive",
+            title: "Failed to load patient count",
+            description: error.message
+          });
+          return 0;
+        }
         return count || 0;
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching patient count:', error);
         return 0;
       }
     },
+    retry: 1,
+    staleTime: 60000, // 1 minute
   });
 
   const { data: pdfCount = 0, isLoading: pdfsLoading } = useQuery({
@@ -42,18 +49,27 @@ const AdminDashboardCards = ({ userCount, onCreateUserSuccess }: AdminDashboardC
     queryFn: async () => {
       try {
         // In a real app, this would fetch from PDF summaries table
-        // For now using mock data from the analytics component
         const { count, error } = await supabase
           .from('summaries')
           .select('*', { count: 'exact', head: true });
         
-        if (error) throw error;
-        return count || 45; // Default to 45 if no data available (matching mock in AdminAnalytics)
-      } catch (error) {
+        if (error) {
+          console.error('PDF count error:', error);
+          toast({
+            variant: "destructive",
+            title: "Failed to load PDF count",
+            description: error.message
+          });
+          return 0;
+        }
+        return count || 0;
+      } catch (error: any) {
         console.error('Error fetching PDF count:', error);
-        return 45; // Default to 45
+        return 0;
       }
     },
+    retry: 1,
+    staleTime: 60000, // 1 minute
   });
 
   return (

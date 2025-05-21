@@ -1,6 +1,5 @@
 
 import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -14,6 +13,7 @@ import {
 import { deleteUser } from '@/utils/user';
 import UserEditModal from './UserEditModal';
 import { Pen, Trash2 } from 'lucide-react';
+import { supabase } from '@/context/auth/supabaseClient';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,16 +26,11 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-// Set Supabase credentials
-const SUPABASE_URL = 'https://lryjqfwkyerivzebacwv.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxyeWpxZndreWVyaXZ6ZWJhY3d2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc3ODA3NDMsImV4cCI6MjA2MzM1Njc0M30.RutX-wO0GNSyFzMolNErWYKIX_r-b4oFfQ76in4qiEA';
-
 const UserManager = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const { toast } = useToast();
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   useEffect(() => {
     const fetchUsers = async () => {
