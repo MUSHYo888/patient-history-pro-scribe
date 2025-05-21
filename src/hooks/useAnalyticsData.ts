@@ -55,6 +55,7 @@ export const useAnalyticsData = () => {
           });
           
           // Convert to required format
+          // Fixed TypeScript error by explicitly typing the user in userData.users
           realUserPatientCounts = userData?.users
             .filter(user => userCounts[user.id])
             .map(user => ({
