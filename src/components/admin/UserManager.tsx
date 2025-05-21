@@ -36,13 +36,23 @@ const UserManager = () => {
     const fetchUsers = async () => {
       setLoading(true);
       try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .order('full_name');
+        // Use auth.admin to list users
+        const { data, error } = await supabase.auth.admin.listUsers();
         
         if (error) throw error;
-        setUsers(data || []);
+        
+        // Format user data to match expected structure
+        const formattedUsers = data?.users?.map(user => ({
+          id: user.id,
+          email: user.email,
+          full_name: user.user_metadata?.full_name || '',
+          role: user.app_metadata?.role || 'user',
+          description: user.user_metadata?.description || '',
+          username: user.user_metadata?.username || '',
+          created_at: user.created_at
+        })) || [];
+        
+        setUsers(formattedUsers);
       } catch (error: any) {
         console.error('Error fetching users:', error);
         toast({

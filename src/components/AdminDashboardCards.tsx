@@ -20,7 +20,6 @@ const AdminDashboardCards = ({ userCount, onCreateUserSuccess }: AdminDashboardC
     queryKey: ['patientCount'],
     queryFn: async () => {
       try {
-        // In a real app, this would fetch from the actual patients table
         const { count, error } = await supabase
           .from('patients')
           .select('*', { count: 'exact', head: true });
@@ -48,7 +47,7 @@ const AdminDashboardCards = ({ userCount, onCreateUserSuccess }: AdminDashboardC
     queryKey: ['pdfCount'],
     queryFn: async () => {
       try {
-        // In a real app, this would fetch from PDF summaries table
+        // Get PDF count from summaries table
         const { count, error } = await supabase
           .from('summaries')
           .select('*', { count: 'exact', head: true });
@@ -80,7 +79,7 @@ const AdminDashboardCards = ({ userCount, onCreateUserSuccess }: AdminDashboardC
           <Users className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{userCount}</div>
+          <div className="text-2xl font-bold">{userCount || 0}</div>
         </CardContent>
       </Card>
       

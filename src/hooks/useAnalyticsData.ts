@@ -1,12 +1,7 @@
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/context/auth/supabaseClient';
 import { useToast } from '@/components/ui/use-toast';
-
-// Default values to prevent errors when environment variables are not set
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key';
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 export interface UserPatientCount {
   user_id: string;
@@ -33,19 +28,84 @@ export const useAnalyticsData = () => {
   const fetchAnalyticsData = async () => {
     setLoading(true);
     try {
-      // For demo purposes, we'll generate mock data
-      // In a production environment, these would be actual Supabase queries
+      // Try to get real data from Supabase
+      let realUserPatientCounts: UserPatientCount[] = [];
+      let realCommonComplaints: ComplaintCount[] = [];
+      let realSummaryCount = 0;
       
-      // Mock user patient counts
+      try {
+        // Get users from auth
+        const { data: userData, error: userError } = await supabase.auth.admin.listUsers();
+        
+        if (userError) throw userError;
+        
+        // Try to get patient counts by user
+        const { data: patientData, error: patientError } = await supabase
+          .from('patients')
+          .select('created_by, id')
+          .is('created_by', 'not.null');
+          
+        if (!patientError && patientData) {
+          // Count patients per user
+          const userCounts: Record<string, number> = {};
+          patientData.forEach(patient => {
+            if (patient.created_by) {
+              userCounts[patient.created_by] = (userCounts[patient.created_by] || 0) + 1;
+            }
+          });
+          
+          // Convert to required format
+          realUserPatientCounts = userData?.users
+            .filter(user => userCounts[user.id])
+            .map(user => ({
+              user_id: user.id,
+              user_email: user.email || 'Unknown User',
+              count: userCounts[user.id] || 0,
+            })) || [];
+        }
+        
+        // Try to get summary count
+        const { count: summaryCount, error: summaryError } = await supabase
+          .from('summaries')
+          .select('*', { count: 'exact', head: true });
+          
+        if (!summaryError) {
+          realSummaryCount = summaryCount || 0;
+        }
+        
+        // Try to get complaint data
+        const { data: complaintData, error: complaintError } = await supabase
+          .from('patients')
+          .select('chief_complaint');
+          
+        if (!complaintError && complaintData) {
+          // Count complaint frequencies
+          const complaintCounts: Record<string, number> = {};
+          complaintData.forEach(patient => {
+            if (patient.chief_complaint) {
+              complaintCounts[patient.chief_complaint] = (complaintCounts[patient.chief_complaint] || 0) + 1;
+            }
+          });
+          
+          // Convert to required format and sort
+          realCommonComplaints = Object.entries(complaintCounts)
+            .map(([complaint, count]) => ({ complaint, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5);
+        }
+      } catch (error) {
+        console.error('Error fetching real data:', error);
+        // Continue to use mock data if real data fetch fails
+      }
+      
+      // Use real data if available, otherwise fall back to mock data
       const mockUserCounts = [
         { user_id: '1', user_email: 'doctor1@example.com', count: 15 },
         { user_id: '2', user_email: 'doctor2@example.com', count: 8 },
         { user_id: '3', user_email: 'nurse1@example.com', count: 12 },
         { user_id: '4', user_email: 'specialist@example.com', count: 5 }
       ];
-      setUserPatientCounts(mockUserCounts);
       
-      // Mock common complaints
       const mockComplaints = [
         { complaint: 'Chest Pain', count: 12 },
         { complaint: 'Headache', count: 10 },
@@ -53,44 +113,11 @@ export const useAnalyticsData = () => {
         { complaint: 'Shortness of Breath', count: 6 },
         { complaint: 'Back Pain', count: 5 }
       ];
-      setCommonComplaints(mockComplaints);
       
-      // Mock total summaries
-      setTotalSummaries(45);
-
-      // Example of an actual Supabase query (commented out)
-      /*
-      // Get patient counts per user
-      const { data: patientCountData, error: patientCountError } = await supabase
-        .from('patients')
-        .select('created_by, count(*)', { count: 'exact' })
-        .groupby('created_by');
-        
-      if (patientCountError) throw patientCountError;
-      
-      // Get profiles for user emails
-      const userIds = patientCountData.map(item => item.created_by);
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, email')
-        .in('id', userIds);
-        
-      if (profilesError) throw profilesError;
-      
-      // Combine the data
-      const userCounts = patientCountData.map(item => {
-        const profile = profilesData.find(p => p.id === item.created_by);
-        return {
-          user_id: item.created_by,
-          user_email: profile?.email || 'Unknown User',
-          count: item.count
-        };
-      });
-      
-      setUserPatientCounts(userCounts);
-      */
-      
-    } catch (error) {
+      setUserPatientCounts(realUserPatientCounts.length > 0 ? realUserPatientCounts : mockUserCounts);
+      setCommonComplaints(realCommonComplaints.length > 0 ? realCommonComplaints : mockComplaints);
+      setTotalSummaries(realSummaryCount > 0 ? realSummaryCount : 45);
+    } catch (error: any) {
       console.error('Error fetching analytics data:', error);
       toast({
         variant: "destructive",

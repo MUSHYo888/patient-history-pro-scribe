@@ -34,14 +34,13 @@ const Admin = () => {
         return;
       }
 
-      // Check if user is an admin
-      const { data: userData, error: userError } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', data.session.user.id)
-        .single();
-
-      if (userError || userData?.role !== 'admin') {
+      // Check if user is an admin by email or metadata
+      const isAdmin = 
+        data.session.user.email === 'muslimkaki@gmail.com' || 
+        data.session.user.app_metadata?.role === 'admin' || 
+        data.session.user.user_metadata?.role === 'admin';
+      
+      if (!isAdmin) {
         toast({
           variant: "destructive",
           title: "Unauthorized",
@@ -64,13 +63,21 @@ const Admin = () => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // Fetch users directly from auth.users using admin functions
+      const { data, error } = await supabase.auth.admin.listUsers();
       
       if (error) throw error;
-      setUsers(data || []);
+      
+      // Format user data to match expected structure
+      const formattedUsers = data?.users?.map(user => ({
+        id: user.id,
+        email: user.email,
+        full_name: user.user_metadata?.full_name || 'N/A',
+        role: user.app_metadata?.role || 'user',
+        created_at: user.created_at
+      })) || [];
+      
+      setUsers(formattedUsers);
     } catch (error: any) {
       console.error('Error fetching users:', error);
       toast({

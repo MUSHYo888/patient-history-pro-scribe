@@ -17,6 +17,10 @@ const UserPatientTable = ({ userPatientCounts, loading }: UserPatientTableProps)
     return <p>Loading user data...</p>;
   }
 
+  if (!userPatientCounts || userPatientCounts.length === 0) {
+    return <p>No provider patient data available</p>;
+  }
+
   return (
     <div className="relative w-full overflow-auto">
       <table className="w-full caption-bottom text-sm">
