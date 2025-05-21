@@ -7,6 +7,3 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 // Create a single Supabase client instance to be reused
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// Export a function to get a fresh client when needed (useful for auth operations)
-export const getSupabaseClient = () => supabase;
