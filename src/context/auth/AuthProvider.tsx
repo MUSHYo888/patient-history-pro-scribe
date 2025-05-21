@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
@@ -6,6 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { AuthProviderProps } from './types';
 import AuthContext from './AuthContext';
 import { signIn, signOut, updateProfile } from './authActions';
+import { initializeAuthState } from './authStateInitializer';
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
@@ -42,17 +42,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Initialize auth state using a custom hook
   useEffect(() => {
-    // Import inside useEffect to avoid hook order issues
-    import('./useAuthStateListener').then(module => {
-      const { initializeAuthState } = module;
-      initializeAuthState({
-        setUser,
-        setProfile,
-        setSession,
-        setIsAdmin,
-        setLoading,
-        navigate
-      });
+    const navigate = useNavigate();
+    initializeAuthState({
+      setUser,
+      setProfile,
+      setSession,
+      setIsAdmin,
+      setLoading,
+      navigate
     });
   }, [navigate]);
 
