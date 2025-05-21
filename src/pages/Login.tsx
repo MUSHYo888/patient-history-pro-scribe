@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,16 +16,17 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const { signIn, session, loading: authLoading, user } = useAuth();
 
-  // Reset form when component mounts
+  // Reset form and error state when component mounts or location changes
   useEffect(() => {
     setEmailOrUsername('');
     setPassword('');
     setLoginError(null);
     setLoading(false);
-  }, []);
+  }, [location.key]); // Reset when navigation occurs
 
   // Redirect if already logged in
   useEffect(() => {
@@ -36,7 +37,7 @@ const Login = () => {
                      (user.email === 'muslimkaki@gmail.com');
       
       // Navigate to the appropriate page
-      navigate(isAdmin ? '/admin' : '/');
+      navigate(isAdmin ? '/admin' : '/', { replace: true });
     }
   }, [session, user, navigate]);
 
@@ -54,7 +55,7 @@ const Login = () => {
         description: "Welcome back!",
       });
       
-      // Navigation is now handled in useEffect and AuthContext
+      // Navigation is now handled in useEffect
     } catch (error: any) {
       console.error('Login error:', error);
       setLoginError(error.message || 'Failed to log in. Please check your credentials and try again.');
@@ -63,8 +64,7 @@ const Login = () => {
         title: "Login failed",
         description: error.message || 'Failed to log in. Please check your credentials and try again.',
       });
-    } finally {
-      setLoading(false);
+      setLoading(false); // Make sure to reset loading on error
     }
   };
 
@@ -72,7 +72,7 @@ const Login = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="mt-4 text-sm text-gray-500">Loading...</p>
+        <p className="mt-4 text-sm text-gray-500">Loading authentication...</p>
       </div>
     );
   }

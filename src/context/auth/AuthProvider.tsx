@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -16,6 +16,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
+  const authListenerRef = useRef<{ subscription: { unsubscribe: () => void } } | null>(null);
 
   // Function to fetch user profile
   const fetchUserProfile = async (userId: string) => {
@@ -38,6 +39,30 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
+  // Function to update auth state with user information
+  const updateAuthState = async (currentSession: Session | null) => {
+    if (currentSession?.user) {
+      setUser(currentSession.user);
+      setSession(currentSession);
+      
+      // Fetch user profile
+      const profileData = await fetchUserProfile(currentSession.user.id);
+      setProfile(profileData || null);
+      setIsAdmin(
+        profileData?.role === 'admin' || 
+        currentSession.user.app_metadata?.role === 'admin' || 
+        currentSession.user.user_metadata?.role === 'admin' || 
+        currentSession.user.email === 'muslimkaki@gmail.com'
+      );
+    } else {
+      // Clear auth state
+      setUser(null);
+      setProfile(null);
+      setSession(null);
+      setIsAdmin(false);
+    }
+  };
+
   // Initialize auth state
   useEffect(() => {
     let mounted = true;
@@ -56,20 +81,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
 
         if (currentSession) {
-          // Set session and user if we have a valid session
-          setSession(currentSession);
-          setUser(currentSession.user);
-
-          // Fetch user profile
-          const profileData = await fetchUserProfile(currentSession.user.id);
-          if (profileData) {
-            setProfile(profileData);
-            setIsAdmin(profileData.role === 'admin');
+          await updateAuthState(currentSession);
+          
+          // Handle redirection if on login page
+          if (location.pathname === '/login') {
+            const isAdminUser = 
+              currentSession.user.app_metadata?.role === 'admin' || 
+              currentSession.user.user_metadata?.role === 'admin' ||
+              currentSession.user.email === 'muslimkaki@gmail.com';
             
-            // Handle redirection if on login page
-            if (location.pathname === '/login') {
-              navigate(profileData.role === 'admin' ? '/admin' : '/');
-            }
+            navigate(isAdminUser ? '/admin' : '/', { replace: true });
           }
         }
       } catch (error) {
@@ -84,51 +105,84 @@ export function AuthProvider({ children }: AuthProviderProps) {
     initializeAuth();
 
     // Set up auth state change listener
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, authSession) => {
-      console.log('Auth state changed:', event);
-      
-      if (mounted) {
-        // Update session state
-        setSession(authSession);
-        setUser(authSession?.user ?? null);
-
-        // Handle different auth events
-        if (event === 'SIGNED_IN' && authSession?.user) {
-          const profileData = await fetchUserProfile(authSession.user.id);
-          setProfile(profileData || null);
-          setIsAdmin(profileData?.role === 'admin' || false);
-          
-          // Redirect on sign in if on login page
-          if (location.pathname === '/login') {
-            navigate(profileData?.role === 'admin' ? '/admin' : '/');
-          }
-        } else if (event === 'SIGNED_OUT') {
-          // Clear user data on sign out
-          setProfile(null);
-          setIsAdmin(false);
-          
-          // Redirect to login page on sign out
-          if (location.pathname !== '/welcome' && location.pathname !== '/login') {
-            navigate('/login');
-          }
-        } else if (event === 'TOKEN_REFRESHED') {
-          // Just update the session, no need to update profile
-          console.log('Token refreshed');
-        } else if (event === 'USER_UPDATED') {
-          // Refresh user profile if user data was updated
-          if (authSession?.user) {
-            const profileData = await fetchUserProfile(authSession.user.id);
-            setProfile(profileData || null);
-            setIsAdmin(profileData?.role === 'admin' || false);
-          }
-        }
+    const setupAuthListener = () => {
+      // Clean up previous listener if exists
+      if (authListenerRef.current) {
+        authListenerRef.current.subscription.unsubscribe();
       }
-    });
+      
+      const { data: authListener } = supabase.auth.onAuthStateChange(async (event, authSession) => {
+        console.log('Auth state changed:', event);
+        
+        if (!mounted) return;
+        
+        // Handle different auth events
+        switch (event) {
+          case 'SIGNED_IN':
+            if (authSession) {
+              setLoading(true);
+              await updateAuthState(authSession);
+              setLoading(false);
+              
+              // Redirect on sign in if on login page
+              if (location.pathname === '/login') {
+                const isAdminUser = 
+                  authSession.user?.app_metadata?.role === 'admin' || 
+                  authSession.user?.user_metadata?.role === 'admin' ||
+                  authSession.user?.email === 'muslimkaki@gmail.com';
+                  
+                navigate(isAdminUser ? '/admin' : '/', { replace: true });
+              }
+            }
+            break;
+            
+          case 'SIGNED_OUT':
+            // Clear user data on sign out
+            setUser(null);
+            setProfile(null);
+            setSession(null);
+            setIsAdmin(false);
+            
+            // Reset Supabase auth (this helps with subsequent logins)
+            await supabase.auth.signOut({ scope: 'local' });
+            
+            // Redirect to login page on sign out
+            if (location.pathname !== '/welcome' && location.pathname !== '/login') {
+              navigate('/login', { replace: true });
+            }
+            break;
+            
+          case 'TOKEN_REFRESHED':
+            // Just update the session
+            if (authSession) {
+              setSession(authSession);
+            }
+            break;
+            
+          case 'USER_UPDATED':
+            // Refresh user profile if user data was updated
+            if (authSession?.user) {
+              setUser(authSession.user);
+              setSession(authSession);
+              const profileData = await fetchUserProfile(authSession.user.id);
+              setProfile(profileData || null);
+              setIsAdmin(profileData?.role === 'admin' || false);
+            }
+            break;
+        }
+      });
+      
+      authListenerRef.current = authListener;
+    };
+    
+    setupAuthListener();
 
     return () => {
       mounted = false;
       // Clean up auth listener
-      authListener.subscription.unsubscribe();
+      if (authListenerRef.current) {
+        authListenerRef.current.subscription.unsubscribe();
+      }
     };
   }, [navigate, location.pathname]);
 
@@ -179,25 +233,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
       
       console.log('Login successful');
+      // Auth state and redirect handled by auth state change listener
       
-      // Note: Redirect is now handled by the auth state change listener
     } catch (error: any) {
-      throw error;
-    } finally {
+      // Set loading to false if there's an error
       setLoading(false);
+      throw error;
     }
   };
 
   const signOut = async () => {
     try {
       setLoading(true);
-      await supabase.auth.signOut();
-      // Clear user state explicitly
+      
+      // Explicitly clear state before calling signOut to prevent stale state
       setUser(null);
       setProfile(null);
       setSession(null);
       setIsAdmin(false);
-      // Redirection handled by auth state change listener
+      
+      // Sign out from Supabase
+      await supabase.auth.signOut({ scope: 'local' });
+      
+      // Force navigation to login page
+      navigate('/login', { replace: true });
+      
     } catch (error: any) {
       toast({
         variant: "destructive",
