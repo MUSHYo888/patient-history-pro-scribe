@@ -44,18 +44,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Initialize auth state
   useEffect(() => {
     // Don't call hooks inside the effect body
-    const cleanup = initializeAuthState({
+    let cleanupFunction: (() => void) | undefined;
+    
+    // Initialize auth state and set cleanup function when Promise resolves
+    initializeAuthState({
       setUser,
       setProfile,
       setSession,
       setIsAdmin,
       setLoading,
       navigate
+    }).then(cleanup => {
+      cleanupFunction = cleanup;
     });
     
+    // Return cleanup function that calls the saved function if it exists
     return () => {
-      if (cleanup) {
-        cleanup();
+      if (cleanupFunction) {
+        cleanupFunction();
       }
     };
   }, [navigate]);
