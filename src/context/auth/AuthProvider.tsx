@@ -14,7 +14,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
-  const { toast } = useToast();
+  const toast = useToast();
   const navigate = useNavigate();
 
   // Initialize auth state and set up listeners
