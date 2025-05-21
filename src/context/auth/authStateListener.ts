@@ -2,7 +2,8 @@
 import { User, Session } from '@supabase/supabase-js';
 import { NavigateFunction } from 'react-router-dom';
 import { supabase } from './supabaseClient';
-import { updateAuthState, fetchUserProfile } from './utils';
+import { updateAuthState } from './authState';
+import { fetchUserProfile } from './userProfile';
 
 interface AuthListenerProps {
   setUser: (user: User | null) => void;

@@ -2,7 +2,7 @@
 import { User, Session } from '@supabase/supabase-js';
 import { NavigateFunction } from 'react-router-dom';
 import { supabase, resetSupabaseClient } from './supabaseClient';
-import { updateAuthState } from './utils';
+import { updateAuthState } from './authState';
 import { setupAuthListener } from './authStateListener';
 
 interface AuthStateInitializerProps {
