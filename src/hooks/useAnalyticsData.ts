@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/context/auth/supabaseClient';
 import { useToast } from '@/components/ui/use-toast';
+import { User } from '@supabase/supabase-js';
 
 export interface UserPatientCount {
   user_id: string;
@@ -55,14 +56,16 @@ export const useAnalyticsData = () => {
           });
           
           // Convert to required format
-          // Fixed TypeScript error by explicitly typing the user in userData.users
+          // Fixed TypeScript error by explicitly typing the users in userData.users
           realUserPatientCounts = userData?.users
-            .filter(user => userCounts[user.id])
-            .map(user => ({
-              user_id: user.id,
-              user_email: user.email || 'Unknown User',
-              count: userCounts[user.id] || 0,
-            })) || [];
+            ? userData.users
+                .filter((user: User) => userCounts[user.id])
+                .map((user: User) => ({
+                  user_id: user.id,
+                  user_email: user.email || 'Unknown User',
+                  count: userCounts[user.id] || 0,
+                }))
+            : [];
         }
         
         // Try to get summary count
