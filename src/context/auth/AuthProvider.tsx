@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
@@ -40,10 +41,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return updateProfile(user.id, fullName, description, setProfile, profile, toast);
   };
 
-  // Initialize auth state using a custom hook
+  // Initialize auth state
   useEffect(() => {
-    const navigate = useNavigate();
-    initializeAuthState({
+    // Don't call hooks inside the effect body
+    const cleanup = initializeAuthState({
       setUser,
       setProfile,
       setSession,
@@ -51,6 +52,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setLoading,
       navigate
     });
+    
+    return () => {
+      if (cleanup) {
+        cleanup();
+      }
+    };
   }, [navigate]);
 
   const value = {
