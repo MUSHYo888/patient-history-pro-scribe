@@ -2,7 +2,7 @@
 import { useEffect, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { NavigateFunction, useNavigate, useLocation } from 'react-router-dom';
-import { supabase } from './supabaseClient';
+import { supabase, resetSupabaseClient } from './supabaseClient';
 import { updateAuthState, fetchUserProfile } from './utils';
 
 interface UseAuthStateListenerProps {
@@ -26,11 +26,26 @@ export const initializeAuthState = async ({
   setLoading(true);
   
   try {
-    // Clear any stale data in local storage that might conflict
-    localStorage.removeItem('supabase.auth.refreshSession');
+    // Set a timeout to prevent the app from getting stuck in loading
+    const authTimeout = setTimeout(() => {
+      console.log('Auth initialization timeout - forcing auth state reset');
+      setUser(null);
+      setProfile(null);
+      setSession(null);
+      setIsAdmin(false);
+      setLoading(false);
+      
+      // Reset the client to clear any potential issues
+      resetSupabaseClient().then(() => {
+        navigate('/login', { replace: true });
+      });
+    }, 10000); // 10 seconds timeout
     
     // Get current session
     const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+    
+    // Clear the timeout since we got a response
+    clearTimeout(authTimeout);
     
     if (error) {
       console.error('Error getting session:', error);
@@ -51,6 +66,11 @@ export const initializeAuthState = async ({
     }
   } catch (error) {
     console.error('Auth initialization error:', error);
+    // Reset auth state on error
+    setUser(null);
+    setProfile(null);
+    setSession(null);
+    setIsAdmin(false);
   } finally {
     setLoading(false);
   }
@@ -108,6 +128,13 @@ export const setupAuthListener = ({
         setSession(null);
         setIsAdmin(false);
         
+        // Clear any Supabase local storage
+        Object.keys(localStorage).forEach(key => {
+          if (key.includes('supabase') || key.includes('sb-')) {
+            localStorage.removeItem(key);
+          }
+        });
+        
         // Redirect to login page on sign out
         console.log('Redirecting to login page after sign out');
         navigate('/login', { replace: true });
@@ -115,9 +142,10 @@ export const setupAuthListener = ({
         
       case 'TOKEN_REFRESHED':
         console.log('TOKEN_REFRESHED event detected');
-        // Just update the session
+        // Update the session and user data
         if (authSession) {
           setSession(authSession);
+          setUser(authSession.user);
         }
         break;
         
@@ -129,8 +157,21 @@ export const setupAuthListener = ({
           setSession(authSession);
           const profileData = await fetchUserProfile(authSession.user.id);
           setProfile(profileData || null);
-          setIsAdmin(profileData?.role === 'admin' || false);
+          setIsAdmin(profileData?.role === 'admin' || 
+                    authSession.user.app_metadata?.role === 'admin' || 
+                    authSession.user.user_metadata?.role === 'admin' || 
+                    authSession.user.email === 'muslimkaki@gmail.com');
         }
+        break;
+        
+      case 'PASSWORD_RECOVERY':
+      case 'USER_DELETED':
+        // Clear auth state for these events
+        setUser(null);
+        setProfile(null);
+        setSession(null);
+        setIsAdmin(false);
+        navigate('/login', { replace: true });
         break;
     }
   });

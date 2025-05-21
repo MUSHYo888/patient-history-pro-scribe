@@ -55,17 +55,16 @@ export const useAnalyticsData = () => {
             }
           });
           
-          // Convert to required format
-          // Fixed TypeScript error by explicitly typing the users in userData.users
-          realUserPatientCounts = userData?.users
-            ? userData.users
-                .filter((user: User) => userCounts[user.id])
-                .map((user: User) => ({
-                  user_id: user.id,
-                  user_email: user.email || 'Unknown User',
-                  count: userCounts[user.id] || 0,
-                }))
-            : [];
+          // Convert to required format with proper type safety
+          if (userData?.users && Array.isArray(userData.users)) {
+            realUserPatientCounts = userData.users
+              .filter((user: User) => user && user.id && userCounts[user.id])
+              .map((user: User) => ({
+                user_id: user.id,
+                user_email: user.email || 'Unknown User',
+                count: userCounts[user.id] || 0,
+              }));
+          }
         }
         
         // Try to get summary count

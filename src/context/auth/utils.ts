@@ -2,21 +2,46 @@
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from './supabaseClient';
 
-// Function to fetch user profile
+// Function to fetch user profile from auth metadata instead of profiles table
 export const fetchUserProfile = async (userId: string) => {
   try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    // First, try to get the user from auth.users through the admin API
+    const { data: userData, error: userError } = await supabase.auth.admin.getUserById(userId);
 
-    if (error) {
-      console.error('Error fetching user profile:', error);
+    if (userError) {
+      console.error('Error fetching user from auth:', userError);
+      
+      // Fallback: try to get minimal profile data from the session user
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('Error getting session:', sessionError);
+        return null;
+      }
+      
+      if (session?.user && session.user.id === userId) {
+        // Create profile from session user data
+        return {
+          id: session.user.id,
+          email: session.user.email,
+          full_name: session.user.user_metadata?.full_name || '',
+          role: session.user.app_metadata?.role || 'user',
+          description: session.user.user_metadata?.description || ''
+        };
+      }
+      
       return null;
     }
 
-    return data;
+    // Return user profile formed from auth data
+    return {
+      id: userData.user.id,
+      email: userData.user.email,
+      full_name: userData.user.user_metadata?.full_name || '',
+      role: userData.user.app_metadata?.role || 'user',
+      description: userData.user.user_metadata?.description || '',
+      // Add additional fields as needed
+    };
   } catch (err) {
     console.error('Exception when fetching profile:', err);
     return null;
@@ -50,10 +75,39 @@ export const updateAuthState = async (
     setUser(currentSession.user);
     setSession(currentSession);
     
-    // Fetch user profile
-    const profileData = await fetchUserProfile(currentSession.user.id);
-    setProfile(profileData || null);
-    setIsAdmin(checkIsAdmin(currentSession.user, profileData));
+    try {
+      // Fetch user profile
+      const profileData = await fetchUserProfile(currentSession.user.id);
+      
+      // Special case for muslimkaki@gmail.com - always treat as admin
+      if (currentSession.user.email === 'muslimkaki@gmail.com') {
+        const adminProfile = {
+          ...(profileData || {}),
+          id: currentSession.user.id,
+          email: currentSession.user.email,
+          role: 'admin',
+          full_name: profileData?.full_name || 'Admin User'
+        };
+        setProfile(adminProfile);
+        setIsAdmin(true);
+      } else {
+        setProfile(profileData || null);
+        setIsAdmin(checkIsAdmin(currentSession.user, profileData));
+      }
+    } catch (err) {
+      console.error('Error updating auth state:', err);
+      
+      // Create minimal profile from user data
+      const minimalProfile = {
+        id: currentSession.user.id,
+        email: currentSession.user.email,
+        role: currentSession.user.app_metadata?.role || 'user',
+        full_name: currentSession.user.user_metadata?.full_name || ''
+      };
+      
+      setProfile(minimalProfile);
+      setIsAdmin(checkIsAdmin(currentSession.user, minimalProfile));
+    }
   } else {
     // Clear auth state
     setUser(null);

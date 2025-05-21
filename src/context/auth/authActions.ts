@@ -78,18 +78,42 @@ export const signOut = async (
     console.log("Starting signOut process");
     setLoading(true);
     
-    // Explicitly clear state before calling signOut
+    // First clear all auth-related local storage items
+    const localStorageKeys = Object.keys(localStorage);
+    for (const key of localStorageKeys) {
+      if (key.includes('supabase.auth') || key.includes('sb-')) {
+        console.log(`Clearing localStorage item: ${key}`);
+        localStorage.removeItem(key);
+      }
+    }
+    
+    // Reset IndexedDB storage used by Supabase
+    const resetIndexedDB = async () => {
+      try {
+        const databases = await window.indexedDB.databases();
+        databases.forEach(db => {
+          if (db.name && (db.name.includes('supabase') || db.name.includes('sb-'))) {
+            console.log(`Deleting IndexedDB database: ${db.name}`);
+            window.indexedDB.deleteDatabase(db.name);
+          }
+        });
+      } catch (err) {
+        console.error("Error clearing IndexedDB:", err);
+        // Continue with sign out process even if this fails
+      }
+    };
+    
+    try {
+      await resetIndexedDB();
+    } catch (e) {
+      console.error("IndexedDB cleanup failed, continuing with signout", e);
+    }
+    
+    // Clear state before calling signOut
     setUser(null);
     setProfile(null);
     setSession(null);
     setIsAdmin(false);
-    
-    // Force clear any auth data from local storage
-    localStorage.removeItem('supabase.auth.token');
-    localStorage.removeItem('supabase.auth.refreshToken');
-    localStorage.removeItem('supabase.auth.expiresAt');
-    localStorage.removeItem('supabase.auth.provider');
-    localStorage.removeItem('supabase.auth.refreshSession');
     
     // Sign out from Supabase with the global scope to invalidate all sessions
     const { error } = await supabase.auth.signOut({ scope: 'global' });

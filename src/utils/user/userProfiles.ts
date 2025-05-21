@@ -6,7 +6,10 @@ export const getUserProfile = async (userId: string) => {
     // Get user data from auth API
     const { data, error } = await supabase.auth.admin.getUserById(userId);
     
-    if (error) throw error;
+    if (error) {
+      console.error('Error getting user from auth:', error);
+      throw error;
+    }
     
     if (!data || !data.user) {
       throw new Error('User not found');

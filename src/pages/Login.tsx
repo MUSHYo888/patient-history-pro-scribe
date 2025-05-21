@@ -29,30 +29,65 @@ const Login = () => {
     setLoading(false);
   }, [location.key]); // Reset when navigation occurs
 
-  // Force clean any stale Supabase sessions and local storage on login page mount
+  // Comprehensive cleanup on login page mount
   useEffect(() => {
     const cleanupSession = async () => {
       try {
-        // Force clear potentially problematic localStorage items
-        localStorage.removeItem('supabase.auth.token');
-        localStorage.removeItem('supabase.auth.refreshToken');
-        localStorage.removeItem('supabase.auth.expiresAt');
-        localStorage.removeItem('supabase.auth.provider');
-        localStorage.removeItem('supabase.auth.refreshSession');
+        console.log('Running session cleanup on login page mount');
         
-        console.log('Cleaned up local storage on login page');
-        
-        // Only force logout if we detect we're coming from a previous session
-        if (document.referrer.includes(window.location.origin)) {
-          console.log('Cleaning potential stale session');
-          await supabase.auth.signOut({ scope: 'local' });
+        // Clear any Supabase auth data from local storage
+        const localStorageKeys = Object.keys(localStorage);
+        for (const key of localStorageKeys) {
+          if (key.includes('supabase.auth') || key.includes('sb-')) {
+            console.log(`Clearing localStorage item: ${key}`);
+            localStorage.removeItem(key);
+          }
         }
+        
+        // Reset browser session storage
+        const sessionStorageKeys = Object.keys(sessionStorage);
+        for (const key of sessionStorageKeys) {
+          if (key.includes('supabase') || key.includes('sb-')) {
+            console.log(`Clearing sessionStorage item: ${key}`);
+            sessionStorage.removeItem(key);
+          }
+        }
+        
+        // Reset potential IndexedDB storage
+        try {
+          const databases = await window.indexedDB.databases();
+          databases.forEach(db => {
+            if (db.name && (db.name.includes('supabase') || db.name.includes('sb-'))) {
+              console.log(`Deleting IndexedDB database: ${db.name}`);
+              window.indexedDB.deleteDatabase(db.name);
+            }
+          });
+        } catch (err) {
+          console.error("IndexedDB access error:", err);
+          // Continue even if this fails
+        }
+        
+        // Force sign out any existing session
+        await supabase.auth.signOut({ scope: 'global' });
+        console.log('Forced signout on login page mount');
       } catch (err) {
         console.error('Error during session cleanup:', err);
       }
     };
     
     cleanupSession();
+    
+    // Add a timeout to check if we're stuck in loading state
+    const loadingTimer = setTimeout(() => {
+      if (authLoading) {
+        console.log('Auth loading state is taking too long - possible stuck state');
+        window.location.reload(); // Force page reload if loading is taking too long
+      }
+    }, 5000); // 5 seconds timeout
+    
+    return () => {
+      clearTimeout(loadingTimer);
+    };
   }, []);
 
   // Redirect if already logged in
@@ -101,6 +136,12 @@ const Login = () => {
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <p className="mt-4 text-sm text-gray-500">Loading authentication...</p>
+        <button 
+          onClick={() => window.location.reload()}
+          className="mt-8 text-sm text-blue-500 hover:text-blue-700 underline"
+        >
+          Stuck? Click to reload
+        </button>
       </div>
     );
   }
