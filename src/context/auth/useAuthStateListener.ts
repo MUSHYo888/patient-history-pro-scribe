@@ -1,7 +1,6 @@
 
-import { useEffect, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { NavigateFunction } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import { updateAuthState, fetchUserProfile } from './utils';
 
@@ -21,7 +20,7 @@ export const initializeAuthState = async ({
   setIsAdmin,
   setLoading,
   navigate
-}: UseAuthStateListenerProps & { navigate: any }) => {
+}: UseAuthStateListenerProps & { navigate: NavigateFunction }) => {
   console.log('Initializing auth state');
   setLoading(true);
   
@@ -56,7 +55,7 @@ export const initializeAuthState = async ({
   }
   
   // Set up the auth listener
-  setupAuthListener({
+  return setupAuthListener({
     setUser,
     setProfile,
     setSession,
@@ -74,7 +73,7 @@ export const setupAuthListener = ({
   setIsAdmin,
   setLoading,
   navigate
-}: UseAuthStateListenerProps & { navigate: any }) => {
+}: UseAuthStateListenerProps & { navigate: NavigateFunction }) => {
   // Set up auth state change listener
   const { data: authListener } = supabase.auth.onAuthStateChange(async (event, authSession) => {
     console.log('Auth state changed:', event, 'for user:', authSession?.user?.email);
@@ -136,7 +135,11 @@ export const setupAuthListener = ({
   });
   
   // Return the unsubscribe function
-  return authListener.subscription.unsubscribe;
+  return () => {
+    if (authListener && authListener.subscription) {
+      authListener.subscription.unsubscribe();
+    }
+  };
 };
 
 // Original hook for compatibility - now a simplified wrapper
@@ -164,16 +167,16 @@ export const useAuthStateListener = ({
       
       // Only initialize if component is still mounted
       if (isComponentMounted) {
-        const unsubscribe = await initializeAuthState({
+        initializeAuthState({
           setUser, 
           setProfile, 
           setSession, 
           setIsAdmin, 
           setLoading,
           navigate
+        }).then(unsubscribe => {
+          authListenerRef.current = unsubscribe;
         });
-        
-        authListenerRef.current = unsubscribe;
       }
     }
     
