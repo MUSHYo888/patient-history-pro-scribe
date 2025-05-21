@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { AuthProviderProps } from './types';
 import { supabase } from './supabaseClient';
 import AuthContext from './AuthContext';
@@ -17,92 +17,117 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Function to fetch user profile
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching user profile:', error);
+        return null;
+      }
+
+      return data;
+    } catch (err) {
+      console.error('Exception when fetching profile:', err);
+      return null;
+    }
+  };
+
+  // Initialize auth state
   useEffect(() => {
-    const getSession = async () => {
+    let mounted = true;
+    
+    const initializeAuth = async () => {
+      if (!mounted) return;
       setLoading(true);
+      
       try {
         // Get current session
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
         if (error) {
           console.error('Error getting session:', error);
           setLoading(false);
           return;
         }
 
-        setSession(session);
-        setUser(session?.user ?? null);
+        if (currentSession) {
+          // Set session and user if we have a valid session
+          setSession(currentSession);
+          setUser(currentSession.user);
 
-        if (session?.user) {
-          const { data, error: profileError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-
-          if (profileError) {
-            console.error('Error fetching user profile:', profileError);
-          }
-
-          if (data) {
-            setProfile(data);
-            setIsAdmin(data.role === 'admin');
-          }
-          
-          // After setting up user data, redirect appropriately if on login page
-          if (location.pathname === '/login') {
-            if (data?.role === 'admin') {
-              navigate('/admin');
-            } else {
-              navigate('/');
+          // Fetch user profile
+          const profileData = await fetchUserProfile(currentSession.user.id);
+          if (profileData) {
+            setProfile(profileData);
+            setIsAdmin(profileData.role === 'admin');
+            
+            // Handle redirection if on login page
+            if (location.pathname === '/login') {
+              navigate(profileData.role === 'admin' ? '/admin' : '/');
             }
           }
         }
+      } catch (error) {
+        console.error('Auth initialization error:', error);
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
 
-    getSession();
+    initializeAuth();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+    // Set up auth state change listener
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, authSession) => {
       console.log('Auth state changed:', event);
-      setSession(session);
-      setUser(session?.user ?? null);
+      
+      if (mounted) {
+        // Update session state
+        setSession(authSession);
+        setUser(authSession?.user ?? null);
 
-      if (session?.user) {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-
-        if (error) {
-          console.error('Error fetching user profile during auth change:', error);
-        }
-
-        setProfile(data || null);
-        setIsAdmin(data?.role === 'admin' || false);
-        
-        // Redirect on sign in if on login page
-        if (event === 'SIGNED_IN' && location.pathname === '/login') {
-          if (data?.role === 'admin') {
-            navigate('/admin');
-          } else {
-            navigate('/');
+        // Handle different auth events
+        if (event === 'SIGNED_IN' && authSession?.user) {
+          const profileData = await fetchUserProfile(authSession.user.id);
+          setProfile(profileData || null);
+          setIsAdmin(profileData?.role === 'admin' || false);
+          
+          // Redirect on sign in if on login page
+          if (location.pathname === '/login') {
+            navigate(profileData?.role === 'admin' ? '/admin' : '/');
           }
-        }
-      } else {
-        setProfile(null);
-        setIsAdmin(false);
-        
-        // Redirect to login page on sign out
-        if (event === 'SIGNED_OUT' && location.pathname !== '/welcome' && location.pathname !== '/login') {
-          navigate('/login');
+        } else if (event === 'SIGNED_OUT') {
+          // Clear user data on sign out
+          setProfile(null);
+          setIsAdmin(false);
+          
+          // Redirect to login page on sign out
+          if (location.pathname !== '/welcome' && location.pathname !== '/login') {
+            navigate('/login');
+          }
+        } else if (event === 'TOKEN_REFRESHED') {
+          // Just update the session, no need to update profile
+          console.log('Token refreshed');
+        } else if (event === 'USER_UPDATED') {
+          // Refresh user profile if user data was updated
+          if (authSession?.user) {
+            const profileData = await fetchUserProfile(authSession.user.id);
+            setProfile(profileData || null);
+            setIsAdmin(profileData?.role === 'admin' || false);
+          }
         }
       }
     });
 
     return () => {
+      mounted = false;
+      // Clean up auth listener
       authListener.subscription.unsubscribe();
     };
   }, [navigate, location.pathname]);
@@ -156,7 +181,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       console.log('Login successful');
       
       // Note: Redirect is now handled by the auth state change listener
-      // This ensures the redirection happens after all auth-related state is updated
     } catch (error: any) {
       throw error;
     } finally {
@@ -165,9 +189,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const signOut = async () => {
-    setLoading(true);
     try {
+      setLoading(true);
       await supabase.auth.signOut();
+      // Clear user state explicitly
+      setUser(null);
+      setProfile(null);
+      setSession(null);
+      setIsAdmin(false);
       // Redirection handled by auth state change listener
     } catch (error: any) {
       toast({

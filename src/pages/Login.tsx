@@ -17,14 +17,28 @@ const Login = () => {
   const [loginError, setLoginError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { signIn, session, loading: authLoading } = useAuth();
+  const { signIn, session, loading: authLoading, user } = useAuth();
+
+  // Reset form when component mounts
+  useEffect(() => {
+    setEmailOrUsername('');
+    setPassword('');
+    setLoginError(null);
+    setLoading(false);
+  }, []);
 
   // Redirect if already logged in
   useEffect(() => {
-    if (session) {
-      navigate('/');
+    if (session && user) {
+      // Check if the user has admin role
+      const isAdmin = user.app_metadata?.role === 'admin' || 
+                     user.user_metadata?.role === 'admin' ||
+                     (user.email === 'muslimkaki@gmail.com');
+      
+      // Navigate to the appropriate page
+      navigate(isAdmin ? '/admin' : '/');
     }
-  }, [session, navigate]);
+  }, [session, user, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,7 +54,7 @@ const Login = () => {
         description: "Welcome back!",
       });
       
-      // Navigation is now handled in AuthContext based on user role
+      // Navigation is now handled in useEffect and AuthContext
     } catch (error: any) {
       console.error('Login error:', error);
       setLoginError(error.message || 'Failed to log in. Please check your credentials and try again.');
