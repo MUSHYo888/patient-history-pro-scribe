@@ -1,5 +1,4 @@
 
-import { useEffect, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { NavigateFunction, useNavigate, useLocation } from 'react-router-dom';
 import { supabase, resetSupabaseClient } from './supabaseClient';
@@ -39,7 +38,7 @@ export const initializeAuthState = async ({
       resetSupabaseClient().then(() => {
         navigate('/login', { replace: true });
       });
-    }, 10000); // 10 seconds timeout
+    }, 5000); // Reduced from 10s to 5s for faster feedback
     
     // Get current session
     const { data: { session: currentSession }, error } = await supabase.auth.getSession();
@@ -128,13 +127,6 @@ export const setupAuthListener = ({
         setSession(null);
         setIsAdmin(false);
         
-        // Clear any Supabase local storage
-        Object.keys(localStorage).forEach(key => {
-          if (key.includes('supabase') || key.includes('sb-')) {
-            localStorage.removeItem(key);
-          }
-        });
-        
         // Redirect to login page on sign out
         console.log('Redirecting to login page after sign out');
         navigate('/login', { replace: true });
@@ -165,7 +157,6 @@ export const setupAuthListener = ({
         break;
         
       case 'PASSWORD_RECOVERY':
-      case 'USER_DELETED':
         // Clear auth state for these events
         setUser(null);
         setProfile(null);
@@ -173,6 +164,9 @@ export const setupAuthListener = ({
         setIsAdmin(false);
         navigate('/login', { replace: true });
         break;
+        
+      // Fix for TypeScript error - USER_DELETED is not a valid AuthChangeEvent in newer Supabase
+      // Removed USER_DELETED case
     }
   });
   

@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, Info, Loader2 } from "lucide-react";
 import { useAuth } from '@/context/auth';
-import { supabase } from '@/context/auth/supabaseClient';
+import { supabase, resetSupabaseClient } from '@/context/auth/supabaseClient';
 
 const Login = () => {
   const [emailOrUsername, setEmailOrUsername] = useState('');
@@ -32,58 +32,19 @@ const Login = () => {
   // Comprehensive cleanup on login page mount
   useEffect(() => {
     const cleanupSession = async () => {
-      try {
-        console.log('Running session cleanup on login page mount');
-        
-        // Clear any Supabase auth data from local storage
-        const localStorageKeys = Object.keys(localStorage);
-        for (const key of localStorageKeys) {
-          if (key.includes('supabase.auth') || key.includes('sb-')) {
-            console.log(`Clearing localStorage item: ${key}`);
-            localStorage.removeItem(key);
-          }
-        }
-        
-        // Reset browser session storage
-        const sessionStorageKeys = Object.keys(sessionStorage);
-        for (const key of sessionStorageKeys) {
-          if (key.includes('supabase') || key.includes('sb-')) {
-            console.log(`Clearing sessionStorage item: ${key}`);
-            sessionStorage.removeItem(key);
-          }
-        }
-        
-        // Reset potential IndexedDB storage
-        try {
-          const databases = await window.indexedDB.databases();
-          databases.forEach(db => {
-            if (db.name && (db.name.includes('supabase') || db.name.includes('sb-'))) {
-              console.log(`Deleting IndexedDB database: ${db.name}`);
-              window.indexedDB.deleteDatabase(db.name);
-            }
-          });
-        } catch (err) {
-          console.error("IndexedDB access error:", err);
-          // Continue even if this fails
-        }
-        
-        // Force sign out any existing session
-        await supabase.auth.signOut({ scope: 'global' });
-        console.log('Forced signout on login page mount');
-      } catch (err) {
-        console.error('Error during session cleanup:', err);
-      }
+      console.log('Running session cleanup on login page mount');
+      await resetSupabaseClient();
     };
     
     cleanupSession();
     
-    // Add a timeout to check if we're stuck in loading state
+    // Set a shorter timeout to detect stuck loading states
     const loadingTimer = setTimeout(() => {
       if (authLoading) {
         console.log('Auth loading state is taking too long - possible stuck state');
         window.location.reload(); // Force page reload if loading is taking too long
       }
-    }, 5000); // 5 seconds timeout
+    }, 3000); // 3 seconds timeout (reduced from 5)
     
     return () => {
       clearTimeout(loadingTimer);
@@ -110,6 +71,9 @@ const Login = () => {
     setLoginError(null);
 
     try {
+      // Clear any existing session data before attempting login
+      await resetSupabaseClient();
+      
       console.log('Attempting login with:', emailOrUsername);
       await signIn(emailOrUsername, password);
       
@@ -138,7 +102,7 @@ const Login = () => {
         <p className="mt-4 text-sm text-gray-500">Loading authentication...</p>
         <button 
           onClick={() => window.location.reload()}
-          className="mt-8 text-sm text-blue-500 hover:text-blue-700 underline"
+          className="mt-4 text-sm text-blue-500 hover:text-blue-700 underline"
         >
           Stuck? Click to reload
         </button>

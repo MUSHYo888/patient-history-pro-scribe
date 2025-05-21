@@ -1,6 +1,6 @@
 
 import { NavigateFunction } from 'react-router-dom';
-import { supabase } from './supabaseClient';
+import { supabase, resetSupabaseClient } from './supabaseClient';
 import { ToastType } from './types';
 
 // Sign in function
@@ -13,6 +13,9 @@ export const signIn = async (
   console.log('Signing in with:', emailOrUsername);
   
   try {
+    // Ensure a clean state before sign in
+    await resetSupabaseClient();
+    
     // First try to sign in with email
     let { data, error } = await supabase.auth.signInWithPassword({
       email: emailOrUsername,
@@ -78,49 +81,17 @@ export const signOut = async (
     console.log("Starting signOut process");
     setLoading(true);
     
-    // First clear all auth-related local storage items
-    const localStorageKeys = Object.keys(localStorage);
-    for (const key of localStorageKeys) {
-      if (key.includes('supabase.auth') || key.includes('sb-')) {
-        console.log(`Clearing localStorage item: ${key}`);
-        localStorage.removeItem(key);
-      }
-    }
-    
-    // Reset IndexedDB storage used by Supabase
-    const resetIndexedDB = async () => {
-      try {
-        const databases = await window.indexedDB.databases();
-        databases.forEach(db => {
-          if (db.name && (db.name.includes('supabase') || db.name.includes('sb-'))) {
-            console.log(`Deleting IndexedDB database: ${db.name}`);
-            window.indexedDB.deleteDatabase(db.name);
-          }
-        });
-      } catch (err) {
-        console.error("Error clearing IndexedDB:", err);
-        // Continue with sign out process even if this fails
-      }
-    };
-    
-    try {
-      await resetIndexedDB();
-    } catch (e) {
-      console.error("IndexedDB cleanup failed, continuing with signout", e);
-    }
-    
-    // Clear state before calling signOut
+    // First clear auth state before API calls
     setUser(null);
     setProfile(null);
     setSession(null);
     setIsAdmin(false);
     
-    // Sign out from Supabase with the global scope to invalidate all sessions
-    const { error } = await supabase.auth.signOut({ scope: 'global' });
+    // Use the centralized reset function that handles everything
+    const { success } = await resetSupabaseClient();
     
-    if (error) {
-      console.error("Supabase signOut error:", error);
-      throw error;
+    if (!success) {
+      console.error("Supabase client reset had issues");
     }
     
     console.log("Successfully signed out, redirecting to login");

@@ -17,17 +17,48 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
 // Export a function to completely reset the Supabase client state
 export const resetSupabaseClient = async () => {
-  const { error } = await supabase.auth.signOut({ scope: 'global' });
-  if (error) {
-    console.error('Error during Supabase reset:', error);
-  }
+  console.log('Completely resetting Supabase client state');
   
-  // Clear local storage items related to Supabase
-  Object.keys(localStorage).forEach(key => {
-    if (key.includes('supabase') || key.includes('sb-')) {
-      localStorage.removeItem(key);
+  try {
+    // Sign out from Supabase - use global scope to invalidate all sessions
+    const { error } = await supabase.auth.signOut({ scope: 'global' });
+    if (error) {
+      console.error('Error during Supabase sign out:', error);
     }
-  });
-  
-  return { success: !error };
+    
+    // Clear all local storage items related to Supabase
+    Object.keys(localStorage).forEach(key => {
+      if (key.includes('supabase') || key.includes('sb-')) {
+        console.log(`Clearing localStorage item: ${key}`);
+        localStorage.removeItem(key);
+      }
+    });
+    
+    // Clear session storage items related to Supabase
+    Object.keys(sessionStorage).forEach(key => {
+      if (key.includes('supabase') || key.includes('sb-')) {
+        console.log(`Clearing sessionStorage item: ${key}`);
+        sessionStorage.removeItem(key);
+      }
+    });
+    
+    // Reset potential IndexedDB storage
+    try {
+      const databases = await window.indexedDB.databases();
+      databases.forEach(db => {
+        if (db.name && (db.name.includes('supabase') || db.name.includes('sb-'))) {
+          console.log(`Deleting IndexedDB database: ${db.name}`);
+          window.indexedDB.deleteDatabase(db.name);
+        }
+      });
+    } catch (dbErr) {
+      console.error("IndexedDB cleanup failed:", dbErr);
+      // Continue even if this fails
+    }
+    
+    return { success: !error };
+  } catch (err) {
+    console.error('Unexpected error during Supabase reset:', err);
+    return { success: false };
+  }
 };
