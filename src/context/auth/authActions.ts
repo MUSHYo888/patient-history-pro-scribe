@@ -64,7 +64,7 @@ export const signIn = async (
   }
 };
 
-// Sign out function
+// Sign out function with comprehensive cleanup
 export const signOut = async (
   setLoading: (loading: boolean) => void,
   setUser: (user: null) => void,
@@ -78,24 +78,29 @@ export const signOut = async (
     console.log("Starting signOut process");
     setLoading(true);
     
-    // Explicitly clear state before calling signOut to prevent stale state
+    // Explicitly clear state before calling signOut
     setUser(null);
     setProfile(null);
     setSession(null);
     setIsAdmin(false);
     
-    // Sign out from Supabase - use local scope to avoid invalidating other sessions
-    const { error } = await supabase.auth.signOut({ scope: 'local' });
+    // Force clear any auth data from local storage
+    localStorage.removeItem('supabase.auth.token');
+    localStorage.removeItem('supabase.auth.refreshToken');
+    localStorage.removeItem('supabase.auth.expiresAt');
+    localStorage.removeItem('supabase.auth.provider');
+    localStorage.removeItem('supabase.auth.refreshSession');
+    
+    // Sign out from Supabase with the global scope to invalidate all sessions
+    const { error } = await supabase.auth.signOut({ scope: 'global' });
     
     if (error) {
       console.error("Supabase signOut error:", error);
       throw error;
     }
     
-    // Force clear auth data from local storage
-    localStorage.removeItem('supabase.auth.token');
-    
     console.log("Successfully signed out, redirecting to login");
+    
     // Force navigation to login page
     navigate('/login', { replace: true });
     

@@ -1,12 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { AuthProviderProps } from './types';
 import AuthContext from './AuthContext';
 import { signIn, signOut, updateProfile } from './authActions';
-import { useAuthStateListener } from './useAuthStateListener';
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
@@ -16,16 +15,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [isAdmin, setIsAdmin] = useState(false);
   const toast = useToast();
   const navigate = useNavigate();
-
-  // Initialize auth state and set up listeners
-  useAuthStateListener({
-    setUser,
-    setProfile,
-    setSession,
-    setIsAdmin,
-    setLoading
-  });
-
+  
   // Sign in handler
   const handleSignIn = async (emailOrUsername: string, password: string) => {
     return signIn(emailOrUsername, password, setLoading);
@@ -49,6 +39,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
     if (!user) return;
     return updateProfile(user.id, fullName, description, setProfile, profile, toast);
   };
+
+  // Initialize auth state using a custom hook
+  useEffect(() => {
+    // Import inside useEffect to avoid hook order issues
+    import('./useAuthStateListener').then(module => {
+      const { initializeAuthState } = module;
+      initializeAuthState({
+        setUser,
+        setProfile,
+        setSession,
+        setIsAdmin,
+        setLoading,
+        navigate
+      });
+    });
+  }, [navigate]);
 
   const value = {
     user,

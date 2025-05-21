@@ -29,6 +29,32 @@ const Login = () => {
     setLoading(false);
   }, [location.key]); // Reset when navigation occurs
 
+  // Force clean any stale Supabase sessions and local storage on login page mount
+  useEffect(() => {
+    const cleanupSession = async () => {
+      try {
+        // Force clear potentially problematic localStorage items
+        localStorage.removeItem('supabase.auth.token');
+        localStorage.removeItem('supabase.auth.refreshToken');
+        localStorage.removeItem('supabase.auth.expiresAt');
+        localStorage.removeItem('supabase.auth.provider');
+        localStorage.removeItem('supabase.auth.refreshSession');
+        
+        console.log('Cleaned up local storage on login page');
+        
+        // Only force logout if we detect we're coming from a previous session
+        if (document.referrer.includes(window.location.origin)) {
+          console.log('Cleaning potential stale session');
+          await supabase.auth.signOut({ scope: 'local' });
+        }
+      } catch (err) {
+        console.error('Error during session cleanup:', err);
+      }
+    };
+    
+    cleanupSession();
+  }, []);
+
   // Redirect if already logged in
   useEffect(() => {
     if (session && user) {
@@ -42,20 +68,6 @@ const Login = () => {
       navigate(isAdmin ? '/admin' : '/', { replace: true });
     }
   }, [session, user, navigate]);
-
-  // Check if we need to clear session on login page load
-  useEffect(() => {
-    const checkAndClearSession = async () => {
-      // If we're on the login page via direct navigation, ensure we're logged out
-      if (document.referrer === '' && location.key === 'default') {
-        console.log('Direct navigation to login page - clearing any stale sessions');
-        // Optional: Clear local auth state but don't redirect
-        await supabase.auth.signOut({ scope: 'local' });
-      }
-    };
-    
-    checkAndClearSession();
-  }, [location.key]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,7 +83,7 @@ const Login = () => {
         description: "Welcome back!",
       });
       
-      // Navigation is now handled in useEffect
+      // Navigation is handled by the auth state listener
     } catch (error: any) {
       console.error('Login error:', error);
       setLoginError(error.message || 'Failed to log in. Please check your credentials and try again.');
@@ -80,7 +92,7 @@ const Login = () => {
         title: "Login failed",
         description: error.message || 'Failed to log in. Please check your credentials and try again.',
       });
-      setLoading(false); // Make sure to reset loading on error
+      setLoading(false);
     }
   };
 
