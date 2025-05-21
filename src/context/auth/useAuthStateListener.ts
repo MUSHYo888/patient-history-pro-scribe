@@ -1,6 +1,6 @@
-
 import { User, Session } from '@supabase/supabase-js';
 import { NavigateFunction, useNavigate, useLocation } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
 import { supabase, resetSupabaseClient } from './supabaseClient';
 import { updateAuthState, fetchUserProfile } from './utils';
 
