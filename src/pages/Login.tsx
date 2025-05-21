@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, Info, Loader2 } from "lucide-react";
 import { useAuth } from '@/context/auth';
+import { supabase } from '@/context/auth/supabaseClient';
 
 const Login = () => {
   const [emailOrUsername, setEmailOrUsername] = useState('');
@@ -31,6 +32,7 @@ const Login = () => {
   // Redirect if already logged in
   useEffect(() => {
     if (session && user) {
+      console.log('Login - User already logged in, redirecting');
       // Check if the user has admin role
       const isAdmin = user.app_metadata?.role === 'admin' || 
                      user.user_metadata?.role === 'admin' ||
@@ -40,6 +42,20 @@ const Login = () => {
       navigate(isAdmin ? '/admin' : '/', { replace: true });
     }
   }, [session, user, navigate]);
+
+  // Check if we need to clear session on login page load
+  useEffect(() => {
+    const checkAndClearSession = async () => {
+      // If we're on the login page via direct navigation, ensure we're logged out
+      if (document.referrer === '' && location.key === 'default') {
+        console.log('Direct navigation to login page - clearing any stale sessions');
+        // Optional: Clear local auth state but don't redirect
+        await supabase.auth.signOut({ scope: 'local' });
+      }
+    };
+    
+    checkAndClearSession();
+  }, [location.key]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -75,6 +75,7 @@ export const signOut = async (
   toast: ToastType
 ) => {
   try {
+    console.log("Starting signOut process");
     setLoading(true);
     
     // Explicitly clear state before calling signOut to prevent stale state
@@ -83,13 +84,28 @@ export const signOut = async (
     setSession(null);
     setIsAdmin(false);
     
-    // Sign out from Supabase
-    await supabase.auth.signOut({ scope: 'local' });
+    // Sign out from Supabase - use local scope to avoid invalidating other sessions
+    const { error } = await supabase.auth.signOut({ scope: 'local' });
     
+    if (error) {
+      console.error("Supabase signOut error:", error);
+      throw error;
+    }
+    
+    // Force clear auth data from local storage
+    localStorage.removeItem('supabase.auth.token');
+    
+    console.log("Successfully signed out, redirecting to login");
     // Force navigation to login page
     navigate('/login', { replace: true });
     
+    toast.toast({
+      title: "Signed out successfully",
+      description: "You have been logged out",
+    });
+    
   } catch (error: any) {
+    console.error("Sign out failed:", error);
     toast.toast({
       variant: "destructive",
       title: "Sign out failed",

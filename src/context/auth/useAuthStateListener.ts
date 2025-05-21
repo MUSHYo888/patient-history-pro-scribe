@@ -23,24 +23,27 @@ export const useAuthStateListener = ({
   const navigate = useNavigate();
   const location = useLocation();
   const authListenerRef = useRef<{ subscription: { unsubscribe: () => void } } | null>(null);
+  // Track if component is mounted to avoid state updates after unmount
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
-    let mounted = true;
-    
     const initializeAuth = async () => {
-      if (!mounted) return;
+      if (!isMountedRef.current) return;
+      console.log('Initializing auth state');
       setLoading(true);
       
       try {
         // Get current session
         const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+        
         if (error) {
           console.error('Error getting session:', error);
-          setLoading(false);
+          if (isMountedRef.current) setLoading(false);
           return;
         }
 
         if (currentSession) {
+          console.log('Found existing session:', currentSession.user.email);
           await updateAuthState(currentSession, setUser, setSession, setProfile, setIsAdmin);
           
           // Handle redirection if on login page
@@ -50,13 +53,27 @@ export const useAuthStateListener = ({
               currentSession.user.user_metadata?.role === 'admin' ||
               currentSession.user.email === 'muslimkaki@gmail.com';
             
+            console.log('Redirecting from login page to:', isAdminUser ? '/admin' : '/');
             navigate(isAdminUser ? '/admin' : '/', { replace: true });
+          }
+        } else {
+          console.log('No session found during initialization');
+          // Clear auth state
+          setUser(null);
+          setProfile(null);
+          setSession(null);
+          setIsAdmin(false);
+          
+          // Redirect to login if not on welcome or login page
+          if (location.pathname !== '/welcome' && location.pathname !== '/login') {
+            console.log('Redirecting to login page - no session');
+            navigate('/login', { replace: true });
           }
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
       } finally {
-        if (mounted) {
+        if (isMountedRef.current) {
           setLoading(false);
         }
       }
@@ -72,14 +89,15 @@ export const useAuthStateListener = ({
       }
       
       const { data: authListener } = supabase.auth.onAuthStateChange(async (event, authSession) => {
-        console.log('Auth state changed:', event);
+        console.log('Auth state changed:', event, 'for user:', authSession?.user?.email);
         
-        if (!mounted) return;
+        if (!isMountedRef.current) return;
         
         // Handle different auth events
         switch (event) {
           case 'SIGNED_IN':
             if (authSession) {
+              console.log('SIGNED_IN event detected');
               setLoading(true);
               await updateAuthState(authSession, setUser, setSession, setProfile, setIsAdmin);
               setLoading(false);
@@ -90,29 +108,30 @@ export const useAuthStateListener = ({
                   authSession.user?.app_metadata?.role === 'admin' || 
                   authSession.user?.user_metadata?.role === 'admin' ||
                   authSession.user?.email === 'muslimkaki@gmail.com';
-                  
+                
+                console.log('Redirecting after sign in to:', isAdminUser ? '/admin' : '/');  
                 navigate(isAdminUser ? '/admin' : '/', { replace: true });
               }
             }
             break;
             
           case 'SIGNED_OUT':
+            console.log('SIGNED_OUT event detected');
             // Clear user data on sign out
             setUser(null);
             setProfile(null);
             setSession(null);
             setIsAdmin(false);
             
-            // Reset Supabase auth (this helps with subsequent logins)
-            await supabase.auth.signOut({ scope: 'local' });
-            
             // Redirect to login page on sign out
             if (location.pathname !== '/welcome' && location.pathname !== '/login') {
+              console.log('Redirecting to login page after sign out');
               navigate('/login', { replace: true });
             }
             break;
             
           case 'TOKEN_REFRESHED':
+            console.log('TOKEN_REFRESHED event detected');
             // Just update the session
             if (authSession) {
               setSession(authSession);
@@ -120,6 +139,7 @@ export const useAuthStateListener = ({
             break;
             
           case 'USER_UPDATED':
+            console.log('USER_UPDATED event detected');
             // Refresh user profile if user data was updated
             if (authSession?.user) {
               setUser(authSession.user);
@@ -138,7 +158,7 @@ export const useAuthStateListener = ({
     setupAuthListener();
 
     return () => {
-      mounted = false;
+      isMountedRef.current = false;
       // Clean up auth listener
       if (authListenerRef.current) {
         authListenerRef.current.subscription.unsubscribe();
