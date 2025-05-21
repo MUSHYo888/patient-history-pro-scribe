@@ -1,6 +1,7 @@
 
+import { useEffect, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { NavigateFunction } from 'react-router-dom';
+import { NavigateFunction, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import { updateAuthState, fetchUserProfile } from './utils';
 
@@ -152,7 +153,7 @@ export const useAuthStateListener = ({
 }: UseAuthStateListenerProps) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const authListenerRef = useRef<() => void | null>(null);
+  const authListenerRef = useRef<(() => void) | null>(null);
   
   useEffect(() => {
     let isComponentMounted = true;
