@@ -1,63 +1,106 @@
-import { useRef, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { useNavigate } from 'react-router-dom';
-import { initializeAuthState } from './authStateInitializer';
+import { NavigateFunction } from 'react-router-dom';
+import { supabase } from './supabaseClient';
+import { updateAuthState } from './authState';
+import { fetchUserProfile } from './userProfile';
 
-interface UseAuthStateListenerProps {
+interface AuthListenerProps {
   setUser: (user: User | null) => void;
   setProfile: (profile: any | null) => void;
   setSession: (session: Session | null) => void;
   setIsAdmin: (isAdmin: boolean) => void;
   setLoading: (loading: boolean) => void;
+  navigate: NavigateFunction;
 }
 
-export const useAuthStateListener = ({
+export const setupAuthListener = ({
   setUser,
   setProfile,
   setSession,
   setIsAdmin,
-  setLoading
-}: UseAuthStateListenerProps) => {
-  const navigate = useNavigate();
-  const authListenerRef = useRef<(() => void) | null>(null);
-  const isInitializedRef = useRef(false);
+  setLoading,
+  navigate,
+}: AuthListenerProps) => {
+  let lastEvent: string | null = null;
 
-  useEffect(() => {
-    let isComponentMounted = true;
-
-    async function setup() {
-      if (!isComponentMounted || isInitializedRef.current) return;
-
-      console.log('Setting up auth state listener');
-
-      // Clear previous listener if any
-      if (authListenerRef.current) {
-        authListenerRef.current();
+  const { data: authListener } = supabase.auth.onAuthStateChange(
+    async (event, authSession) => {
+      if (event === lastEvent) {
+        // Prevent handling duplicate events rapidly
+        return;
       }
+      lastEvent = event;
 
-      // Initialize auth state and set listener
-      const unsubscribe = await initializeAuthState({
-        setUser,
-        setProfile,
-        setSession,
-        setIsAdmin,
-        setLoading,
-        navigate
-      });
+      console.log('Auth state changed:', event, 'for user:', authSession?.user?.email);
 
-      authListenerRef.current = unsubscribe;
-      isInitializedRef.current = true;
+      switch (event) {
+        case 'SIGNED_IN':
+          if (authSession) {
+            setLoading(true);
+            await updateAuthState(authSession, setUser, setSession, setProfile, setIsAdmin);
+            setLoading(false);
+
+            const isAdminUser =
+              authSession.user?.app_metadata?.role === 'admin' ||
+              authSession.user?.user_metadata?.role === 'admin' ||
+              authSession.user?.email === 'muslimkaki@gmail.com';
+
+            if (window.location.pathname !== (isAdminUser ? '/admin' : '/')) {
+              navigate(isAdminUser ? '/admin' : '/', { replace: true });
+            }
+          }
+          break;
+
+        case 'SIGNED_OUT':
+          setUser(null);
+          setProfile(null);
+          setSession(null);
+          setIsAdmin(false);
+
+          if (window.location.pathname !== '/login') {
+            navigate('/login', { replace: true });
+          }
+          break;
+
+        case 'TOKEN_REFRESHED':
+          if (authSession) {
+            setSession(authSession);
+            setUser(authSession.user);
+          }
+          break;
+
+        case 'USER_UPDATED':
+          if (authSession?.user) {
+            setUser(authSession.user);
+            setSession(authSession);
+            const profileData = await fetchUserProfile(authSession.user.id);
+            setProfile(profileData || null);
+            setIsAdmin(
+              profileData?.role === 'admin' ||
+                authSession.user.app_metadata?.role === 'admin' ||
+                authSession.user.user_metadata?.role === 'admin' ||
+                authSession.user.email === 'muslimkaki@gmail.com'
+            );
+          }
+          break;
+
+        case 'PASSWORD_RECOVERY':
+          setUser(null);
+          setProfile(null);
+          setSession(null);
+          setIsAdmin(false);
+
+          if (window.location.pathname !== '/login') {
+            navigate('/login', { replace: true });
+          }
+          break;
+      }
     }
+  );
 
-    setup();
-
-    return () => {
-      isComponentMounted = false;
-      if (authListenerRef.current) {
-        authListenerRef.current();
-        authListenerRef.current = null;
-      }
-      isInitializedRef.current = false;
-    };
-  }, [navigate, setUser, setProfile, setSession, setIsAdmin, setLoading]);
+  return () => {
+    if (authListener && authListener.subscription) {
+      authListener.subscription.unsubscribe();
+    }
+  };
 };
