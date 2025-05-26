@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
@@ -16,7 +15,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [isAdmin, setIsAdmin] = useState(false);
   const toast = useToast();
   const navigate = useNavigate();
-  
+
   // Sign in handler
   const handleSignIn = async (emailOrUsername: string, password: string) => {
     return signIn(emailOrUsername, password, setLoading);
@@ -41,12 +40,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return updateProfile(user.id, fullName, description, setProfile, profile, toast);
   };
 
-  // Initialize auth state
+  // Initialize auth state — safely only once on mount
   useEffect(() => {
-    // Don't call hooks inside the effect body
     let cleanupFunction: (() => void) | undefined;
-    
-    // Initialize auth state and set cleanup function when Promise resolves
+
     initializeAuthState({
       setUser,
       setProfile,
@@ -57,15 +54,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }).then(cleanup => {
       cleanupFunction = cleanup;
     });
-    
-    // Return cleanup function that calls the saved function if it exists
+
+    // Clean up on unmount
     return () => {
       if (cleanupFunction) {
         cleanupFunction();
       }
     };
-  }, [navigate]);
+  }, []); // <- cleaned dependency array, no navigate here!
 
+  // Context value object
   const value = {
     user,
     profile,
@@ -77,5 +75,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     updateProfile: handleUpdateProfile,
   };
 
+  // Render context provider
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
