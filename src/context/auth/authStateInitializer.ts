@@ -1,4 +1,3 @@
-
 import { User, Session } from '@supabase/supabase-js';
 import { NavigateFunction } from 'react-router-dom';
 import { supabase, resetSupabaseClient } from './supabaseClient';
@@ -14,7 +13,7 @@ interface AuthStateInitializerProps {
   navigate: NavigateFunction;
 }
 
-// This function handles the initialization of auth state
+// Initialize auth state cleanly
 export const initializeAuthState = async ({
   setUser,
   setProfile,
@@ -25,29 +24,26 @@ export const initializeAuthState = async ({
 }: AuthStateInitializerProps) => {
   console.log('Initializing auth state');
   setLoading(true);
-  
+
   try {
-    // Set a timeout to prevent the app from getting stuck in loading
     const authTimeout = setTimeout(() => {
-      console.log('Auth initialization timeout - forcing auth state reset');
+      console.warn('Auth init timeout — forcing reset');
       setUser(null);
       setProfile(null);
       setSession(null);
       setIsAdmin(false);
       setLoading(false);
-      
-      // Reset the client to clear any potential issues
       resetSupabaseClient().then(() => {
-        navigate('/login', { replace: true });
+        if (window.location.pathname !== '/login') {
+          navigate('/login', { replace: true });
+        }
       });
-    }, 5000); // Reduced from 10s to 5s for faster feedback
-    
-    // Get current session
+    }, 5000);
+
+    // Check existing session
     const { data: { session: currentSession }, error } = await supabase.auth.getSession();
-    
-    // Clear the timeout since we got a response
     clearTimeout(authTimeout);
-    
+
     if (error) {
       console.error('Error getting session:', error);
       setLoading(false);
@@ -55,19 +51,35 @@ export const initializeAuthState = async ({
     }
 
     if (currentSession) {
-      console.log('Found existing session:', currentSession.user.email);
+      console.log('Existing session found:', currentSession.user.email);
       await updateAuthState(currentSession, setUser, setSession, setProfile, setIsAdmin);
+
+      const isAdminUser =
+        currentSession.user?.app_metadata?.role === 'admin' ||
+        currentSession.user?.user_metadata?.role === 'admin' ||
+        currentSession.user?.email === 'muslimkaki@gmail.com';
+
+      const targetPath = isAdminUser ? '/admin' : '/';
+      if (window.location.pathname !== targetPath) {
+        console.log('Redirecting to correct path:', targetPath);
+        navigate(targetPath, { replace: true });
+      } else {
+        console.log('Already on correct path, no redirect needed.');
+      }
     } else {
-      console.log('No session found during initialization');
-      // Clear auth state
+      console.log('No session found during init');
       setUser(null);
       setProfile(null);
       setSession(null);
       setIsAdmin(false);
+
+      if (window.location.pathname !== '/login') {
+        console.log('Redirecting to login (no session)');
+        navigate('/login', { replace: true });
+      }
     }
   } catch (error) {
-    console.error('Auth initialization error:', error);
-    // Reset auth state on error
+    console.error('Auth init error:', error);
     setUser(null);
     setProfile(null);
     setSession(null);
@@ -75,8 +87,8 @@ export const initializeAuthState = async ({
   } finally {
     setLoading(false);
   }
-  
-  // Set up the auth listener
+
+  // Attach auth state listener
   return setupAuthListener({
     setUser,
     setProfile,
