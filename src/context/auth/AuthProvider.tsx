@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { AuthProviderProps } from './types';
 import AuthContext from './AuthContext';
@@ -15,8 +16,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [isAdmin, setIsAdmin] = useState(false);
   const toast = useToast();
   const navigate = useNavigate();
-  const location = useLocation();
-
+  
   // Sign in handler
   const handleSignIn = async (emailOrUsername: string, password: string) => {
     return signIn(emailOrUsername, password, setLoading);
@@ -41,15 +41,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return updateProfile(user.id, fullName, description, setProfile, profile, toast);
   };
 
-  // Initialize auth state — skip if already on login page to avoid infinite reloads
+  // Initialize auth state
   useEffect(() => {
-    if (location.pathname === '/login') {
-      setLoading(false); // Make sure loading is false on login page
-      return;
-    }
-
+    // Don't call hooks inside the effect body
     let cleanupFunction: (() => void) | undefined;
-
+    
+    // Initialize auth state and set cleanup function when Promise resolves
     initializeAuthState({
       setUser,
       setProfile,
@@ -60,13 +57,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }).then(cleanup => {
       cleanupFunction = cleanup;
     });
-
+    
+    // Return cleanup function that calls the saved function if it exists
     return () => {
       if (cleanupFunction) {
         cleanupFunction();
       }
     };
-  }, [navigate, location.pathname]);
+  }, [navigate]);
 
   const value = {
     user,

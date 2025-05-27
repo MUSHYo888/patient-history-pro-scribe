@@ -13,91 +13,98 @@ interface AuthListenerProps {
   navigate: NavigateFunction;
 }
 
+// This function sets up the auth state change listener
 export const setupAuthListener = ({
   setUser,
   setProfile,
   setSession,
   setIsAdmin,
   setLoading,
-  navigate,
+  navigate
 }: AuthListenerProps) => {
-  let lastEvent: string | null = null;
+  // Set up auth state change listener
+  const { data: authListener } = supabase.auth.onAuthStateChange(async (event, authSession) => {
+    console.log('Auth state changed:', event, 'for user:', authSession?.user?.email);
 
-  const { data: authListener } = supabase.auth.onAuthStateChange(
-    async (event, authSession) => {
-      if (event === lastEvent) {
-        // Prevent handling duplicate events rapidly
-        return;
-      }
-      lastEvent = event;
+    const currentPath = window.location.pathname;
 
-      console.log('Auth state changed:', event, 'for user:', authSession?.user?.email);
+    switch (event) {
+      case 'SIGNED_IN':
+        if (authSession) {
+          console.log('SIGNED_IN event detected');
+          setLoading(true);
+          await updateAuthState(authSession, setUser, setSession, setProfile, setIsAdmin);
+          setLoading(false);
 
-      switch (event) {
-        case 'SIGNED_IN':
-          if (authSession) {
-            setLoading(true);
-            await updateAuthState(authSession, setUser, setSession, setProfile, setIsAdmin);
-            setLoading(false);
+          const isAdminUser =
+            authSession.user?.app_metadata?.role === 'admin' ||
+            authSession.user?.user_metadata?.role === 'admin' ||
+            authSession.user?.email === 'muslimkaki@gmail.com';
 
-            const isAdminUser =
-              authSession.user?.app_metadata?.role === 'admin' ||
-              authSession.user?.user_metadata?.role === 'admin' ||
-              authSession.user?.email === 'muslimkaki@gmail.com';
-
-            if (window.location.pathname !== (isAdminUser ? '/admin' : '/')) {
-              navigate(isAdminUser ? '/admin' : '/', { replace: true });
-            }
+          const targetPath = isAdminUser ? '/admin' : '/';
+          if (currentPath !== targetPath) {
+            console.log('Redirecting after sign in to:', targetPath);
+            navigate(targetPath, { replace: true });
+          } else {
+            console.log('Already on target path, not redirecting.');
           }
-          break;
+        }
+        break;
 
-        case 'SIGNED_OUT':
-          setUser(null);
-          setProfile(null);
-          setSession(null);
-          setIsAdmin(false);
+      case 'SIGNED_OUT':
+        console.log('SIGNED_OUT event detected');
+        setUser(null);
+        setProfile(null);
+        setSession(null);
+        setIsAdmin(false);
 
-          if (window.location.pathname !== '/login') {
-            navigate('/login', { replace: true });
-          }
-          break;
+        if (currentPath !== '/login') {
+          console.log('Redirecting to login page after sign out');
+          navigate('/login', { replace: true });
+        }
+        break;
 
-        case 'TOKEN_REFRESHED':
-          if (authSession) {
-            setSession(authSession);
-            setUser(authSession.user);
-          }
-          break;
+      case 'TOKEN_REFRESHED':
+        console.log('TOKEN_REFRESHED event detected');
+        if (authSession) {
+          setSession(authSession);
+          setUser(authSession.user);
+        }
+        break;
 
-        case 'USER_UPDATED':
-          if (authSession?.user) {
-            setUser(authSession.user);
-            setSession(authSession);
-            const profileData = await fetchUserProfile(authSession.user.id);
-            setProfile(profileData || null);
-            setIsAdmin(
-              profileData?.role === 'admin' ||
-                authSession.user.app_metadata?.role === 'admin' ||
-                authSession.user.user_metadata?.role === 'admin' ||
-                authSession.user.email === 'muslimkaki@gmail.com'
-            );
-          }
-          break;
+      case 'USER_UPDATED':
+        console.log('USER_UPDATED event detected');
+        if (authSession?.user) {
+          setUser(authSession.user);
+          setSession(authSession);
+          const profileData = await fetchUserProfile(authSession.user.id);
+          setProfile(profileData || null);
+          setIsAdmin(
+            profileData?.role === 'admin' ||
+            authSession.user.app_metadata?.role === 'admin' ||
+            authSession.user.user_metadata?.role === 'admin' ||
+            authSession.user.email === 'muslimkaki@gmail.com'
+          );
+        }
+        break;
 
-        case 'PASSWORD_RECOVERY':
-          setUser(null);
-          setProfile(null);
-          setSession(null);
-          setIsAdmin(false);
+      case 'PASSWORD_RECOVERY':
+        setUser(null);
+        setProfile(null);
+        setSession(null);
+        setIsAdmin(false);
+        if (currentPath !== '/login') {
+          console.log('Redirecting to login page during password recovery');
+          navigate('/login', { replace: true });
+        }
+        break;
 
-          if (window.location.pathname !== '/login') {
-            navigate('/login', { replace: true });
-          }
-          break;
-      }
+      default:
+        console.log('Unhandled auth event:', event);
     }
-  );
+  });
 
+  // Return unsubscribe function
   return () => {
     if (authListener && authListener.subscription) {
       authListener.subscription.unsubscribe();
