@@ -9,7 +9,346 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      answers: {
+        Row: {
+          answer_value: string
+          assessment_id: string
+          category: string | null
+          created_at: string
+          id: string
+          is_positive: boolean | null
+          notes: string | null
+          question_id: string | null
+          question_text: string | null
+        }
+        Insert: {
+          answer_value: string
+          assessment_id: string
+          category?: string | null
+          created_at?: string
+          id?: string
+          is_positive?: boolean | null
+          notes?: string | null
+          question_id?: string | null
+          question_text?: string | null
+        }
+        Update: {
+          answer_value?: string
+          assessment_id?: string
+          category?: string | null
+          created_at?: string
+          id?: string
+          is_positive?: boolean | null
+          notes?: string | null
+          question_id?: string | null
+          question_text?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "answers_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "assessments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assessments: {
+        Row: {
+          chief_complaint: string | null
+          created_at: string
+          date_of_visit: string
+          id: string
+          patient_id: string
+          status: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chief_complaint?: string | null
+          created_at?: string
+          date_of_visit?: string
+          id?: string
+          patient_id: string
+          status?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          chief_complaint?: string | null
+          created_at?: string
+          date_of_visit?: string
+          id?: string
+          patient_id?: string
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessments_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clinical_notes: {
+        Row: {
+          assessment_id: string
+          content: Json
+          created_at: string
+          formatted_text: string | null
+          id: string
+          note_type: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assessment_id: string
+          content: Json
+          created_at?: string
+          formatted_text?: string | null
+          id?: string
+          note_type?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assessment_id?: string
+          content?: Json
+          created_at?: string
+          formatted_text?: string | null
+          id?: string
+          note_type?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinical_notes_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "assessments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      complaints: {
+        Row: {
+          category: string | null
+          created_at: string
+          id: string
+          name: string
+          system: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          system?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          system?: string | null
+        }
+        Relationships: []
+      }
+      investigations: {
+        Row: {
+          assessment_id: string
+          created_at: string
+          id: string
+          interpretation: string | null
+          investigation_type: string
+          name: string
+          normal_range: string | null
+          ordered_date: string | null
+          result_date: string | null
+          result_value: string | null
+          status: string | null
+        }
+        Insert: {
+          assessment_id: string
+          created_at?: string
+          id?: string
+          interpretation?: string | null
+          investigation_type: string
+          name: string
+          normal_range?: string | null
+          ordered_date?: string | null
+          result_date?: string | null
+          result_value?: string | null
+          status?: string | null
+        }
+        Update: {
+          assessment_id?: string
+          created_at?: string
+          id?: string
+          interpretation?: string | null
+          investigation_type?: string
+          name?: string
+          normal_range?: string | null
+          ordered_date?: string | null
+          result_date?: string | null
+          result_value?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "investigations_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "assessments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      past_history: {
+        Row: {
+          created_at: string
+          date_occurred: string | null
+          description: string
+          history_type: string
+          id: string
+          notes: string | null
+          patient_id: string
+          severity: string | null
+          status: string | null
+        }
+        Insert: {
+          created_at?: string
+          date_occurred?: string | null
+          description: string
+          history_type: string
+          id?: string
+          notes?: string | null
+          patient_id: string
+          severity?: string | null
+          status?: string | null
+        }
+        Update: {
+          created_at?: string
+          date_occurred?: string | null
+          description?: string
+          history_type?: string
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          severity?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "past_history_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patients: {
+        Row: {
+          age: number
+          contact_info: string | null
+          created_at: string
+          first_name: string
+          gender: string
+          id: string
+          last_name: string
+          location: string | null
+          mrn: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          age: number
+          contact_info?: string | null
+          created_at?: string
+          first_name: string
+          gender: string
+          id?: string
+          last_name: string
+          location?: string | null
+          mrn?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          age?: number
+          contact_info?: string | null
+          created_at?: string
+          first_name?: string
+          gender?: string
+          id?: string
+          last_name?: string
+          location?: string | null
+          mrn?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      questions: {
+        Row: {
+          category: string | null
+          complaint_id: string | null
+          created_at: string
+          id: string
+          is_red_flag: boolean | null
+          options: Json | null
+          order_index: number | null
+          question_text: string
+          question_type: string | null
+          system: string | null
+        }
+        Insert: {
+          category?: string | null
+          complaint_id?: string | null
+          created_at?: string
+          id?: string
+          is_red_flag?: boolean | null
+          options?: Json | null
+          order_index?: number | null
+          question_text: string
+          question_type?: string | null
+          system?: string | null
+        }
+        Update: {
+          category?: string | null
+          complaint_id?: string | null
+          created_at?: string
+          id?: string
+          is_red_flag?: boolean | null
+          options?: Json | null
+          order_index?: number | null
+          question_text?: string
+          question_type?: string | null
+          system?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "questions_complaint_id_fkey"
+            columns: ["complaint_id"]
+            isOneToOne: false
+            referencedRelation: "complaints"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

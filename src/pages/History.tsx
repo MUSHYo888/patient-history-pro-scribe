@@ -1,21 +1,48 @@
 
+// ABOUTME: Updated History page that uses database-backed chief complaints
+// ABOUTME: Integrates with Supabase complaints table while maintaining existing UI
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePatient } from '@/context/PatientContext';
-import { commonComplaints, questionDatabase } from '@/data/questionDatabase';
+import { getComplaints } from '@/utils/database';
+import { questionDatabase } from '@/data/questionDatabase';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Header from '@/components/Header';
 import QuestionFlow from '@/components/QuestionFlow';
+import { Complaint } from '@/types/database';
 
 const History = () => {
   const navigate = useNavigate();
   const { currentPatient } = usePatient();
   const [searchTerm, setSearchTerm] = useState('');
-  const [filteredComplaints, setFilteredComplaints] = useState(commonComplaints);
+  const [complaints, setComplaints] = useState<Complaint[]>([]);
+  const [filteredComplaints, setFilteredComplaints] = useState<string[]>([]);
   const [selectedComplaint, setSelectedComplaint] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   
+  // Load complaints from database
+  useEffect(() => {
+    const loadComplaints = async () => {
+      try {
+        const dbComplaints = await getComplaints();
+        setComplaints(dbComplaints);
+        setFilteredComplaints(dbComplaints.map(c => c.name));
+      } catch (error) {
+        console.error('Error loading complaints:', error);
+        // Fallback to empty array if database fails
+        setComplaints([]);
+        setFilteredComplaints([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadComplaints();
+  }, []);
+
   useEffect(() => {
     if (!currentPatient) {
       navigate('/');
@@ -34,14 +61,16 @@ const History = () => {
   
   useEffect(() => {
     if (searchTerm) {
-      const filtered = commonComplaints.filter(complaint => 
-        complaint.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      const filtered = complaints
+        .filter(complaint => 
+          complaint.name.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+        .map(c => c.name);
       setFilteredComplaints(filtered);
     } else {
-      setFilteredComplaints(commonComplaints);
+      setFilteredComplaints(complaints.map(c => c.name));
     }
-  }, [searchTerm]);
+  }, [searchTerm, complaints]);
   
   const handleComplaintSelect = (complaint: string) => {
     const complaintId = Object.keys(questionDatabase).find(
@@ -81,21 +110,27 @@ const History = () => {
                         className="mb-4"
                       />
                       
-                      <div className="grid grid-cols-1 gap-2 max-h-64 overflow-y-auto">
-                        {filteredComplaints.map((complaint) => (
-                          <Button
-                            key={complaint}
-                            variant="outline"
-                            className="justify-start text-left h-auto py-3"
-                            onClick={() => handleComplaintSelect(complaint)}
-                          >
-                            {complaint}
-                          </Button>
-                        ))}
-                      </div>
+                      {loading ? (
+                        <div className="text-center py-4 text-gray-500">
+                          Loading complaints...
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 gap-2 max-h-64 overflow-y-auto">
+                          {filteredComplaints.map((complaint) => (
+                            <Button
+                              key={complaint}
+                              variant="outline"
+                              className="justify-start text-left h-auto py-3"
+                              onClick={() => handleComplaintSelect(complaint)}
+                            >
+                              {complaint}
+                            </Button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     
-                    {filteredComplaints.length === 0 && (
+                    {!loading && filteredComplaints.length === 0 && (
                       <div className="text-center py-4 text-gray-500">
                         No matching complaints found
                       </div>
