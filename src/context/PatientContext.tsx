@@ -19,6 +19,9 @@ import {
 } from '@/utils/database';
 import { Patient, Assessment, Answer, LegacyPatient } from '@/types/database';
 
+// Export Patient type for other components
+export type { LegacyPatient as Patient };
+
 interface PatientContextType {
   patients: LegacyPatient[];
   currentPatient: LegacyPatient | null;

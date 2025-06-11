@@ -1,5 +1,4 @@
-
-import { Patient } from '../context/PatientContext';
+import { LegacyPatient as Patient } from '@/types/database';
 import { questionDatabase } from '../data/questionDatabase';
 
 export function generateSummary(patient: Patient): string {

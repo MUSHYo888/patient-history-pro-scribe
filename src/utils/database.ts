@@ -17,7 +17,7 @@ export const createPatient = async (patientData: Omit<Patient, 'id' | 'user_id' 
     .single();
 
   if (error) throw error;
-  return data;
+  return data as Patient;
 };
 
 export const getPatients = async (): Promise<Patient[]> => {
@@ -27,7 +27,7 @@ export const getPatients = async (): Promise<Patient[]> => {
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  return data || [];
+  return (data || []) as Patient[];
 };
 
 export const updatePatient = async (id: string, updates: Partial<Patient>) => {
@@ -39,7 +39,7 @@ export const updatePatient = async (id: string, updates: Partial<Patient>) => {
     .single();
 
   if (error) throw error;
-  return data;
+  return data as Patient;
 };
 
 export const deletePatient = async (id: string) => {
@@ -59,13 +59,13 @@ export const createAssessment = async (patientId: string, chiefComplaint?: strin
       patient_id: patientId,
       user_id: (await supabase.auth.getUser()).data.user?.id,
       chief_complaint: chiefComplaint,
-      status: 'in_progress'
+      status: 'in_progress' as const
     }])
     .select()
     .single();
 
   if (error) throw error;
-  return data;
+  return data as Assessment;
 };
 
 export const getAssessment = async (id: string): Promise<Assessment> => {
@@ -76,7 +76,7 @@ export const getAssessment = async (id: string): Promise<Assessment> => {
     .single();
 
   if (error) throw error;
-  return data;
+  return data as Assessment;
 };
 
 export const updateAssessment = async (id: string, updates: Partial<Assessment>) => {
@@ -88,7 +88,7 @@ export const updateAssessment = async (id: string, updates: Partial<Assessment>)
     .single();
 
   if (error) throw error;
-  return data;
+  return data as Assessment;
 };
 
 // Complaint operations
@@ -99,7 +99,7 @@ export const getComplaints = async (): Promise<Complaint[]> => {
     .order('name');
 
   if (error) throw error;
-  return data || [];
+  return (data || []) as Complaint[];
 };
 
 // Answer operations
@@ -119,7 +119,7 @@ export const saveAnswer = async (assessmentId: string, questionId: string | null
     .single();
 
   if (error) throw error;
-  return data;
+  return data as Answer;
 };
 
 export const getAnswers = async (assessmentId: string): Promise<Answer[]> => {
@@ -130,7 +130,7 @@ export const getAnswers = async (assessmentId: string): Promise<Answer[]> => {
     .order('created_at');
 
   if (error) throw error;
-  return data || [];
+  return (data || []) as Answer[];
 };
 
 // Utility function to convert database patient to legacy format
