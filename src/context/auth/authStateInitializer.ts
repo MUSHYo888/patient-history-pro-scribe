@@ -1,7 +1,7 @@
 
 import { User, Session } from '@supabase/supabase-js';
 import { NavigateFunction } from 'react-router-dom';
-import { supabase, resetSupabaseClient } from './supabaseClient';
+import { supabase } from './supabaseClient';
 import { updateAuthState } from './utils';
 import { setupAuthListener } from './authStateListener';
 
@@ -27,26 +27,8 @@ export const initializeAuthState = async ({
   setLoading(true);
   
   try {
-    // Set a timeout to prevent the app from getting stuck in loading
-    const authTimeout = setTimeout(() => {
-      console.log('Auth initialization timeout - forcing auth state reset');
-      setUser(null);
-      setProfile(null);
-      setSession(null);
-      setIsAdmin(false);
-      setLoading(false);
-      
-      // Reset the client to clear any potential issues
-      resetSupabaseClient().then(() => {
-        navigate('/login', { replace: true });
-      });
-    }, 5000); // Reduced from 10s to 5s for faster feedback
-    
     // Get current session
     const { data: { session: currentSession }, error } = await supabase.auth.getSession();
-    
-    // Clear the timeout since we got a response
-    clearTimeout(authTimeout);
     
     if (error) {
       console.error('Error getting session:', error);
